@@ -1,0 +1,11 @@
+includes:
+    - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+
+parameters:
+    paths:
+        - src
+    level: 5
+    ignoreErrors:
+        - '#has no value type specified in iterable type array#'
+        - '#parameter \$.* with no value type specified#'
+    reportUnmatchedIgnoredErrors: false

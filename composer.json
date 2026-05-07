@@ -1,0 +1,44 @@
+{
+    "name": "fatkulnurk/torrent",
+    "description": "A unified, type-safe PHP SDK for interacting with various torrent clients (qBittorrent, Transmission) via HTTP/JSON APIs.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "torrent",
+        "qbittorrent",
+        "transmission",
+        "bittorrent",
+        "api",
+        "sdk"
+    ],
+    "homepage": "https://github.com/fatkulnurk/torrent",
+    "autoload": {
+        "psr-4": {
+            "Fatkulnurk\\Torrent\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Fatkulnurk\\Torrent\\Tests\\": "tests/"
+        }
+    },
+    "require": {
+        "php": "^8.3",
+        "guzzlehttp/guzzle": "^7.8"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "friendsofphp/php-cs-fixer": "^3.64",
+        "phpstan/phpstan": "^1.12"
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
