@@ -14,12 +14,12 @@ use JsonException;
 
 abstract class AbstractProvider implements TorrentClientInterface
 {
-    protected readonly Client $client;
+    protected Client $client;
 
-    protected readonly array $config;
+    protected array $config;
 
     public function __construct(
-        protected readonly string $baseUrl,
+        protected string $baseUrl,
         array $config = []
     ) {
         $this->config = array_merge(
