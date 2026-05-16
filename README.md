@@ -155,23 +155,21 @@ $torrents = $client->getTorrents();
 |--------|:-----------:|:------------:|:--------:|:------:|:-----:|:-----:|
 | `addTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `getTorrents` | ✅ | ✅ | ⚠️ | ✅ | ✅ | ✅ |
-| `getTorrent` | ✅ | ✅ | ✅ | ✅ | — | — |
-| `pauseTorrent` | ✅ | ✅ | ✅ | ✅ | — | — |
-| `resumeTorrent` | ✅ | ✅ | ✅ | ✅ | — | — |
-| `removeTorrent` | ✅ | ✅ | ✅ | ✅ | — | — |
-| `setDownloadPath` | ✅ | ✅ | ✅ | ✅ | — | — |
+| `getTorrent` | ✓ | ✓ | ⚠️ | ✓ | ✓ | ✓ |
+| `pauseTorrent` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `resumeTorrent` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `removeTorrent` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `setDownloadPath` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `getServerStatus` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Legend:**
 
 | Icon | Meaning |
 |------|---------|
-| ✅ | Tested and working (integration + unit tests) |
-| ✓ | Unit tests pass (not verified in integration) |
-| ⚠️ | Known limitation — `d.multicall2` XML-RPC method fails on certain rTorrent images (e.g. crazymax/rtorrent-rutorrent); `getTorrents` may return empty or throw |
+| ✅ | Tested in integration tests against real Docker containers |
+| ✓ | Unit tests pass (not yet verified in integration tests) |
+| ⚠️ | Known limitation — `d.multicall2` XML-RPC method fails on certain rTorrent images (e.g. crazymax/rtorrent-rutorrent); methods using it (`getTorrents`, `getTorrent`) throw a fault response |
 | — | Not implemented by the provider (throws `RequestException`) |
-
-> **Note:** `getTorrent`, `pauseTorrent`, `resumeTorrent`, `removeTorrent`, and `setDownloadPath` are not yet implemented in `RqbitProvider` and `Aria2Provider`.
 
 ## Drivers
 
