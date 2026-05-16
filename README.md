@@ -1,6 +1,16 @@
 # fatkulnurk/torrent
 
-Unified PHP SDK for multiple torrent clients via their HTTP APIs.
+**PHP torrent client SDK** — manage qBittorrent, Transmission, rTorrent, Deluge, rqbit, and aria2 through a single unified API. Add torrents, monitor downloads, pause/resume, and control your torrent server programmatically with PHP.
+
+Perfect for automation scripts, web-based torrent managers, seedbox dashboards, and PHP applications that need BitTorrent client integration.
+
+## Features
+
+- **Multi-client support** — works with 6 different torrent clients out of the box
+- **Single API** — same methods, same return types, regardless of the client
+- **Composer-ready** — install in seconds with `composer require fatkulnurk/torrent`
+- **PSR-4 autoloading** — clean namespace structure with strict typing
+- **Full test coverage** — tested with PHPUnit 11, analysed with PHPStan 2
 
 ## Install
 
