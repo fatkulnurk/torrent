@@ -9,8 +9,8 @@ services:
       - WEBUI_PORT=8080
     ports:
       - 8080:8080
-      - 6881:6881
-      - 6881:6881/udp
+      - 6882:6881
+      - 6882:6881/udp
     volumes:
       - ./data/qbittorrent/config:/config
       - ./data/qbittorrent/downloads:/downloads
@@ -35,7 +35,9 @@ services:
     restart: unless-stopped
 
   rtorrent:
-    image: crazymax/rtorrent-rutorrent:5.2.10-0.16.7-r0
+    build:
+      context: .
+      dockerfile: docker/rtorrent/Dockerfile
     container_name: torrent-rtorrent
     environment:
       - PUID=1000
@@ -44,8 +46,9 @@ services:
       - RT_DEFAULT_SETTINGS=true
     ports:
       - 8081:8080
-      - 5000:5000
-      - 6881:6881/udp
+      - 8000:8000
+      - 5001:5000
+      - 6883:6881/udp
     volumes:
       - ./data/rtorrent/data:/data
       - ./data/rtorrent/passwd:/passwd
@@ -69,7 +72,7 @@ services:
     restart: unless-stopped
 
   rqbit:
-    image: ikatson/rqbit:latest
+    image: ikatson/rqbit:8.1.1
     container_name: torrent-rqbit
     ports:
       - 3030:3030
@@ -83,7 +86,7 @@ services:
     restart: unless-stopped
 
   aria2:
-    image: p3terx/aria2-pro:latest
+    image: p3terx/aria2-pro:202209060423
     container_name: torrent-aria2
     environment:
       - PUID=1000
@@ -91,11 +94,11 @@ services:
       - UMASK_SET=022
       - RPC_SECRET=secret123
       - RPC_PORT=6800
-      - LISTEN_PORT=6888
+      - LISTEN_PORT=6889
     ports:
       - 6800:6800
-      - 6888:6888
-      - 6888:6888/udp
+      - 6889:6889
+      - 6889:6889/udp
     volumes:
       - ./data/aria2/config:/config
       - ./data/aria2/downloads:/downloads
