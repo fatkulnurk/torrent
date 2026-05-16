@@ -76,3 +76,91 @@ jobs:
       - name: Run PHPStan
         run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G
         continue-on-error: true
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction
+
+      - name: Create data directories
+        run: make setup
+
+      - name: Start Docker services
+        run: docker compose up -d --build
+        timeout-minutes: 10
+
+      - name: Wait for services
+        run: |
+          for i in $(seq 1 60); do
+            running=$(docker container ls --filter name=torrent- --format '{{.Names}}' 2>/dev/null | wc -l)
+            if [ "$running" -ge 6 ]; then
+              echo "All 6 containers running"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::warning::Not all containers started"
+          docker compose ps --services
+        timeout-minutes: 3
+
+      - name: Wait for TCP ports
+        run: |
+          for port in 8080 9091 8000 8112 3030 6800; do
+            echo -n "Port $port: "
+            for i in $(seq 1 30); do
+              if timeout 2 bash -c "echo > /dev/tcp/localhost/$port" 2>/dev/null; then
+                echo "ready"
+                break
+              fi
+              sleep 2
+            done
+          done
+        timeout-minutes: 3
+
+      - name: Wait for qBittorrent password
+        run: |
+          for i in $(seq 1 30); do
+            password=$(docker logs torrent-qbittorrent 2>&1 | grep -oP 'temporary password is provided for this session: \K\S+' || true)
+            if [ -n "$password" ]; then
+              echo "qb_password=$password" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::warning::qBittorrent password not found"
+          echo "qb_password=" >> "$GITHUB_OUTPUT"
+        id: qb_pass
+        timeout-minutes: 2
+
+      - name: Run integration tests
+        run: |
+          INTEGRATION=true \
+          QBITTORRENT_PASSWORD="${{ steps.qb_pass.outputs.qb_password }}" \
+          QBITTORRENT_URL=http://localhost:8080 \
+          TRANSMISSION_URL=http://localhost:9091 \
+          RTORRENT_URL=http://localhost:8000 \
+          DELUGE_URL=http://localhost:8112 \
+          RQBIT_URL=http://localhost:3030 \
+          ARIA2_URL=http://localhost:6800 \
+          ARIA2_SECRET=secret123 \
+          php vendor/bin/phpunit tests/integration --colors=always
+        timeout-minutes: 3
+
+      - name: Show Docker logs on failure
+        if: failure()
+        run: docker compose logs --tail=50
+
+      - name: Clean up
+        if: always()
+        run: docker compose down -v
