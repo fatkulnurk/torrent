@@ -8,15 +8,13 @@ Perfect for automation scripts, web-based torrent managers, seedbox dashboards, 
 
 - [Features](#features)
 - [Install](#install)
-- [Quick Start (with Auth)](#quick-start-with-auth)
+- [Quick Start](#quick-start)
   - [qBittorrent](#qbittorrent)
   - [Transmission](#transmission)
-  - [Deluge](#deluge)
-  - [aria2](#aria2)
-- [Quick Start (without Auth)](#quick-start-without-auth)
   - [rTorrent](#rtorrent)
+  - [Deluge](#deluge)
   - [rqbit](#rqbit)
-  - [Transmission (no-auth mode)](#transmission-no-auth-mode)
+  - [aria2](#aria2)
 - [Methods](#methods)
 - [Driver Status](#driver-status)
 - [Drivers](#drivers)
@@ -40,15 +38,16 @@ Perfect for automation scripts, web-based torrent managers, seedbox dashboards, 
 composer require fatkulnurk/torrent
 ```
 
-## Quick Start (with Auth)
-
-These providers require authentication credentials:
+## Quick Start
 
 ### qBittorrent
+
+qBittorrent always requires authentication.
 
 ```php
 use Fatkulnurk\Torrent\TorrentClientManager;
 
+// With auth (required)
 $client = TorrentClientManager::make('qbittorrent', 'http://192.168.1.10:8080', [
     'username' => 'admin',
     'password' => 'secret',
@@ -62,45 +61,28 @@ $client->removeTorrent('hash123', true);
 
 ### Transmission
 
+Transmission supports both authenticated and anonymous mode depending on server configuration.
+
 ```php
+// With auth
 $client = TorrentClientManager::make('transmission', 'http://192.168.1.20:9091', [
     'username' => 'admin',
     'password' => 'secret',
 ]);
 
-$client->addTorrent('magnet:?xt=urn:btih:...');
-$torrents = $client->getTorrents();
-```
-
-### Deluge
-
-```php
-$client = TorrentClientManager::make('deluge', 'http://192.168.1.40:8112', [
-    'password' => 'deluge',
-]);
+// Without auth (if server allows anonymous connections)
+$client = TorrentClientManager::make('transmission', 'http://192.168.1.20:9091');
 
 $client->addTorrent('magnet:?xt=urn:btih:...');
 $torrents = $client->getTorrents();
 ```
-
-### aria2
-
-```php
-$client = TorrentClientManager::make('aria2', 'http://127.0.0.1:6800', [
-    'secret' => 'your-secret-token',
-]);
-
-$client->addTorrent('magnet:?xt=urn:btih:...');
-$torrents = $client->getTorrents();
-```
-
-## Quick Start (without Auth)
-
-These providers work without credentials:
 
 ### rTorrent
 
+rTorrent has no authentication mechanism.
+
 ```php
+// Without auth (default)
 $client = TorrentClientManager::make('rtorrent', 'http://192.168.1.30:8080', [
     'rpc_endpoint' => 'RPC2',
 ]);
@@ -111,20 +93,44 @@ $torrents = $client->getTorrents();
 
 > The `rpc_endpoint` option defaults to `RPC2`. Set it to `/` when connecting to rTorrent via an SCGI proxy that serves from root (e.g. port 8000 on the crazymax/rtorrent-rutorrent image).
 
-### rqbit
+### Deluge
+
+Deluge always requires a password.
 
 ```php
+// With auth (required)
+$client = TorrentClientManager::make('deluge', 'http://192.168.1.40:8112', [
+    'password' => 'deluge',
+]);
+
+$client->addTorrent('magnet:?xt=urn:btih:...');
+$torrents = $client->getTorrents();
+```
+
+### rqbit
+
+rqbit has no authentication by default.
+
+```php
+// Without auth (default)
 $client = TorrentClientManager::make('rqbit', 'http://127.0.0.1:3030');
 
 $client->addTorrent('magnet:?xt=urn:btih:...');
 $torrents = $client->getTorrents();
 ```
 
-### Transmission (no-auth mode)
+### aria2
+
+aria2 supports both secret-based auth and anonymous mode.
 
 ```php
-$client = TorrentClientManager::make('transmission', 'http://192.168.1.20:9091');
-// No username/password needed if Transmission is configured without auth
+// With auth
+$client = TorrentClientManager::make('aria2', 'http://127.0.0.1:6800', [
+    'secret' => 'your-secret-token',
+]);
+
+// Without auth (if server allows)
+$client = TorrentClientManager::make('aria2', 'http://127.0.0.1:6800');
 
 $client->addTorrent('magnet:?xt=urn:btih:...');
 $torrents = $client->getTorrents();
