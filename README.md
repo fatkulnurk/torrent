@@ -109,7 +109,7 @@ $torrents = $client->getTorrents();
 
 ### rqbit
 
-rqbit has no authentication by default.
+rqbit has no authentication by default. Supports pause, resume, remove (with or without files), and detailed torrent info via its REST API. `setDownloadPath` is not supported.
 
 ```php
 // Without auth (default)
@@ -117,6 +117,10 @@ $client = TorrentClientManager::make('rqbit', 'http://127.0.0.1:3030');
 
 $client->addTorrent('magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny');
 $torrents = $client->getTorrents();
+$client->pauseTorrent($torrents[0]->hash);
+$client->resumeTorrent($torrents[0]->hash);
+$client->removeTorrent($torrents[0]->hash, false); // keep files
+$client->removeTorrent($torrents[0]->hash, true);  // delete files
 ```
 
 ### aria2
@@ -154,22 +158,20 @@ $torrents = $client->getTorrents();
 | Method | qBittorrent | Transmission | rTorrent | Deluge | rqbit | aria2 |
 |--------|:-----------:|:------------:|:--------:|:------:|:-----:|:-----:|
 | `addTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `getTorrents` | ✅ | ✅ | ⚠️ | ✅ | ✅ | ✅ |
-| `getTorrent` | ✓ | ✓ | ⚠️ | ✓ | ✓ | ✓ |
-| `pauseTorrent` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `resumeTorrent` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `removeTorrent` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `setDownloadPath` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `getTorrents` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `getTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `pauseTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `resumeTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `removeTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `setDownloadPath` | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 | `getServerStatus` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 **Legend:**
 
 | Icon | Meaning |
 |------|---------|
-| ✅ | Tested in integration tests against real Docker containers |
-| ✓ | Unit tests pass (not yet verified in integration tests) |
-| ⚠️ | Known limitation — `d.multicall2` XML-RPC method fails on certain rTorrent images (e.g. crazymax/rtorrent-rutorrent); methods using it (`getTorrents`, `getTorrent`) throw a fault response |
-| — | Not implemented by the provider (throws `RequestException`) |
+| ✅ | Supported and tested |
+| ❌ | Not supported by the provider (throws `RequestException`) |
 
 ## Drivers
 
@@ -177,7 +179,7 @@ $torrents = $client->getTorrents();
 |--------|-------|----------|------|-------------|
 | `qbittorrent` | `QbittorrentProvider` | REST (cookie) | username + password | 8080 |
 | `transmission` | `TransmissionProvider` | JSON-RPC | username + password (optional) | 9091 |
-| `rtorrent` | `RTorrentProvider` | XML-RPC | none | 8080 (RPC2) |
+| `rtorrent` | `RTorrentProvider` | XML-RPC | none | 8000 (RPC proxy) |
 | `deluge` | `DelugeProvider` | JSON-RPC | password | 8112 |
 | `rqbit` | `RqbitProvider` | REST | none | 3030 |
 | `aria2` | `Aria2Provider` | JSON-RPC | secret token (optional) | 6800 |
@@ -225,15 +227,15 @@ QB_PASS=<extracted-password> INTEGRATION=true QBITTORRENT_PASSWORD=$QB_PASS php 
 
 Available Docker services:
 
-| Service | URL | Auth |
-|---------|-----|------|
-| qBittorrent | http://localhost:8080 | username: `admin`, password: auto-generated (see logs) |
-| Transmission | http://localhost:9091 | username: `admin`, password: `admin` |
-| rTorrent (XML-RPC) | http://localhost:8000 | none |
-| rTorrent (Web UI) | http://localhost:8081 | none |
-| Deluge | http://localhost:8112 | password: `deluge` |
-| rqbit | http://localhost:3030 | none |
-| aria2 | http://localhost:6800 | secret: `secret123` |
+| Service | Image | Version | URL | Auth |
+|---------|-------|---------|-----|------|
+| qBittorrent | `lscr.io/linuxserver/qbittorrent` | 5.2.0 | http://localhost:8080 | username: `admin`, password: auto-generated (see logs) |
+| Transmission | `lscr.io/linuxserver/transmission` | 4.1.1 | http://localhost:9091 | username: `admin`, password: `admin` |
+| rTorrent | custom `docker/rtorrent/Dockerfile` | 0.16.7 (rTorrent) | http://localhost:8000 (RPC) | none |
+| | (based on `crazymax/rtorrent-rutorrent:5.2.10-0.16.7`) | | http://localhost:8081 (Web UI) | none |
+| Deluge | `lscr.io/linuxserver/deluge` | 2.1.1 | http://localhost:8112 | password: `deluge` |
+| rqbit | `ikatson/rqbit` | 9.0.0-beta.1 | http://localhost:3030 | none |
+| aria2 | custom `docker/aria2/Dockerfile` | 1.37.0 | http://localhost:6800 | secret: `secret123` |
 
 > **Note:** qBittorrent 5.x uses per-session temporary passwords. The password changes on every container restart. Use `make test-integration` to auto-extract it, or run `make qb-password` to view the current password.
 

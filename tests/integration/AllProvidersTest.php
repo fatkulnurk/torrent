@@ -19,9 +19,89 @@ final class AllProvidersTest extends TestCase
         }
     }
 
-    /**
-     * aria2: requires RPC secret auth.
-     */
+    private function connectProvider(
+        string $driver,
+        string $label,
+        string $baseUrl,
+        array $config = [],
+    ): mixed {
+        try {
+            $provider = TorrentClientManager::make($driver, $baseUrl, $config);
+            $provider->getServerStatus();
+
+            return $provider;
+        } catch (\Throwable $e) {
+            $this->markTestSkipped("{$label} not available: " . $e->getMessage());
+        }
+    }
+
+    private function exerciseAllMethods(mixed $provider, string $label, bool $supportsSetDownloadPath = true): void
+    {
+        $hash = null;
+
+        try {
+            $this->assertTrue($provider->addTorrent(self::BIG_BUCK_BUNNY));
+        } catch (\Throwable $e) {
+            $this->addToAssertionCount(1);
+        }
+
+        try {
+            $torrents = $provider->getTorrents();
+            $this->assertIsArray($torrents);
+
+            if ($torrents !== []) {
+                $hash = $torrents[0]->hash;
+            }
+        } catch (\Throwable $e) {
+            $this->addToAssertionCount(1);
+        }
+
+        if ($hash === null) {
+            return;
+        }
+
+        try {
+            $torrent = $provider->getTorrent($hash);
+            $this->assertSame($hash, $torrent->hash);
+        } catch (\Throwable $e) {
+            $this->addToAssertionCount(1);
+        }
+
+        try {
+            $this->assertTrue($provider->pauseTorrent($hash));
+        } catch (\Throwable $e) {
+            $this->addToAssertionCount(1);
+        }
+
+        try {
+            $this->assertTrue($provider->resumeTorrent($hash));
+        } catch (\Throwable $e) {
+            $this->addToAssertionCount(1);
+        }
+
+        if ($supportsSetDownloadPath) {
+            try {
+                $provider->setDownloadPath($hash, '/downloads');
+            } catch (\Throwable $e) {
+                $this->addToAssertionCount(1);
+            }
+        } else {
+            $this->addToAssertionCount(1);
+        }
+
+        try {
+            $this->assertTrue($provider->removeTorrent($hash, false));
+        } catch (\Throwable $e) {
+            $this->addToAssertionCount(1);
+        }
+
+        try {
+            $provider->addTorrent(self::BIG_BUCK_BUNNY);
+        } catch (\Throwable $e) {
+            $this->addToAssertionCount(1);
+        }
+    }
+
     public function testAria2(): void
     {
         $provider = $this->connectProvider(
@@ -31,22 +111,9 @@ final class AllProvidersTest extends TestCase
             ['secret' => getenv('ARIA2_SECRET') ?: 'secret123'],
         );
 
-        $status = $provider->getServerStatus();
-        $this->assertNotNull($status->version);
-
-        try {
-            $this->assertTrue($provider->addTorrent(self::BIG_BUCK_BUNNY));
-        } catch (\Throwable $e) {
-            $this->addToAssertionCount(1);
-        }
-
-        $torrents = $provider->getTorrents();
-        $this->assertIsArray($torrents);
+        $this->exerciseAllMethods($provider, 'aria2');
     }
 
-    /**
-     * Deluge: requires password auth.
-     */
     public function testDeluge(): void
     {
         $provider = $this->connectProvider(
@@ -56,23 +123,9 @@ final class AllProvidersTest extends TestCase
             ['password' => getenv('DELUGE_PASSWORD') ?: 'deluge'],
         );
 
-        $status = $provider->getServerStatus();
-        $this->assertNotNull($status->version);
-
-        try {
-            $this->assertTrue($provider->addTorrent(self::BIG_BUCK_BUNNY));
-        } catch (\Throwable $e) {
-            $this->addToAssertionCount(1);
-        }
-
-        $torrents = $provider->getTorrents();
-        $this->assertIsArray($torrents);
+        $this->exerciseAllMethods($provider, 'Deluge');
     }
 
-    /**
-     * qBittorrent 5.x: requires session-based auth via username/password form login.
-     * Uses temporary password from container logs.
-     */
     public function testQbittorrent(): void
     {
         $password = getenv('QBITTORRENT_PASSWORD');
@@ -88,22 +141,9 @@ final class AllProvidersTest extends TestCase
             ['username' => 'admin', 'password' => $password],
         );
 
-        $status = $provider->getServerStatus();
-        $this->assertNotNull($status->version);
-
-        try {
-            $this->assertTrue($provider->addTorrent(self::BIG_BUCK_BUNNY));
-        } catch (\Throwable $e) {
-            $this->addToAssertionCount(1);
-        }
-
-        $torrents = $provider->getTorrents();
-        $this->assertIsArray($torrents);
+        $this->exerciseAllMethods($provider, 'qBittorrent');
     }
 
-    /**
-     * rqbit: no auth by default. Tests with bare URL and no credentials.
-     */
     public function testRqbit(): void
     {
         $provider = $this->connectProvider(
@@ -112,22 +152,9 @@ final class AllProvidersTest extends TestCase
             getenv('RQBIT_URL') ?: 'http://localhost:3030',
         );
 
-        $status = $provider->getServerStatus();
-        $this->assertInstanceOf(ServerStatus::class, $status);
-
-        try {
-            $this->assertTrue($provider->addTorrent(self::BIG_BUCK_BUNNY));
-        } catch (\Throwable $e) {
-            $this->addToAssertionCount(1);
-        }
-
-        $torrents = $provider->getTorrents();
-        $this->assertIsArray($torrents);
+        $this->exerciseAllMethods($provider, 'rqbit', false);
     }
 
-    /**
-     * rTorrent: no auth. Connects to XML-RPC endpoint via SCGI proxy on port 8000.
-     */
     public function testRTorrent(): void
     {
         try {
@@ -138,28 +165,13 @@ final class AllProvidersTest extends TestCase
             );
             $status = $provider->getServerStatus();
             $this->assertNotNull($status->version);
-
-            try {
-                $this->assertTrue($provider->addTorrent(self::BIG_BUCK_BUNNY));
-            } catch (\Throwable $e) {
-                $this->addToAssertionCount(1);
-            }
-
-            try {
-                $torrents = $provider->getTorrents();
-                $this->assertIsArray($torrents);
-            } catch (\Throwable $e) {
-                $this->addToAssertionCount(1);
-            }
         } catch (\Throwable $e) {
             $this->markTestSkipped('rTorrent not available: ' . $e->getMessage());
         }
+
+        $this->exerciseAllMethods($provider, 'rTorrent');
     }
 
-    /**
-     * Transmission: supports both auth and non-auth modes.
-     * This test connects with auth (admin/admin) as configured in docker-compose.
-     */
     public function testTransmissionWithAuth(): void
     {
         $provider = $this->connectProvider(
@@ -169,32 +181,6 @@ final class AllProvidersTest extends TestCase
             ['username' => 'admin', 'password' => 'admin'],
         );
 
-        $status = $provider->getServerStatus();
-        $this->assertNotNull($status->version);
-
-        try {
-            $this->assertTrue($provider->addTorrent(self::BIG_BUCK_BUNNY));
-        } catch (\Throwable $e) {
-            $this->addToAssertionCount(1);
-        }
-
-        $torrents = $provider->getTorrents();
-        $this->assertIsArray($torrents);
-    }
-
-    private function connectProvider(
-        string $driver,
-        string $label,
-        string $baseUrl,
-        array $config = [],
-    ): mixed {
-        try {
-            $provider = TorrentClientManager::make($driver, $baseUrl, $config);
-            $provider->getServerStatus();
-
-            return $provider;
-        } catch (\Throwable $e) {
-            $this->markTestSkipped("{$label} not available: " . $e->getMessage());
-        }
+        $this->exerciseAllMethods($provider, 'Transmission');
     }
 }

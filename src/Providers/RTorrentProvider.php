@@ -133,29 +133,6 @@ class RTorrentProvider extends AbstractProvider
         return (string) $value;
     }
 
-    private function mapTorrent(array $data): array
-    {
-        $state = (int) $data[2];
-        $complete = (float) $data[6];
-
-        $status = match (true) {
-            $complete >= 1.0 => 2,
-            $state === 1 => 1,
-            default => 0,
-        };
-
-        return [
-            'hash' => $data[0],
-            'hashString' => $data[0],
-            'name' => $data[1],
-            'status' => $status,
-            'totalSize' => (int) $data[3],
-            'leftUntilDone' => (int) $data[4],
-            'downloadDir' => $data[5],
-            'percentDone' => $complete,
-        ];
-    }
-
     #[Override]
     public function addTorrent(string $source, array $options = []): bool
     {
@@ -180,55 +157,137 @@ class RTorrentProvider extends AbstractProvider
     #[Override]
     public function getTorrents(array $filters = []): array
     {
-        $result = $this->xmlRpc('d.multicall2', [
-            'main',
-            'd.get_hash=',
-            'd.get_name=',
-            'd.get_state=',
-            'd.get_size_bytes=',
-            'd.get_left_bytes=',
-            'd.get_directory=',
-            'd.get_complete=',
-            'd.is_open=',
-            'd.is_active=',
-        ]);
+        try {
+            $result = $this->xmlRpc('d.multicall2', [
+                'main',
+                'd.get_hash=',
+                'd.get_name=',
+                'd.get_state=',
+                'd.get_size_bytes=',
+                'd.get_left_bytes=',
+                'd.get_directory=',
+                'd.get_complete=',
+                'd.is_open=',
+                'd.is_active=',
+            ]);
 
-        if (!is_array($result)) {
+            if (!is_array($result)) {
+                return [];
+            }
+
+            return Torrent::collection(
+                array_map(fn(array $data): array => $this->torrentFieldsToArray($data), $result)
+            );
+        } catch (RequestException $e) {
+            if (!str_contains($e->getMessage(), 'invalid target')) {
+                throw $e;
+            }
+
+            return $this->getTorrentsFallback();
+        }
+    }
+
+    private function getTorrentsFallback(): array
+    {
+        try {
+            $hashes = $this->xmlRpc('download_list', []);
+        } catch (RequestException) {
             return [];
         }
 
-        return Torrent::collection(
-            array_map(fn(array $data): array => $this->mapTorrent($data), $result)
-        );
+        if (!is_array($hashes)) {
+            return [];
+        }
+
+        $torrents = [];
+
+        foreach ($hashes as $hash) {
+            try {
+                $torrents[] = $this->fetchTorrentFields($hash);
+            } catch (RequestException) {
+            }
+        }
+
+        return Torrent::collection($torrents);
     }
 
     #[Override]
     public function getTorrent(string $hash): Torrent
     {
-        $result = $this->xmlRpc('d.multicall2', [
-            'main',
-            'd.get_hash=',
-            'd.get_name=',
-            'd.get_state=',
-            'd.get_size_bytes=',
-            'd.get_left_bytes=',
-            'd.get_directory=',
-            'd.get_complete=',
-            'd.is_open=',
-            'd.is_active=',
-        ]);
+        try {
+            $result = $this->xmlRpc('d.multicall2', [
+                'main',
+                'd.get_hash=',
+                'd.get_name=',
+                'd.get_state=',
+                'd.get_size_bytes=',
+                'd.get_left_bytes=',
+                'd.get_directory=',
+                'd.get_complete=',
+                'd.is_open=',
+                'd.is_active=',
+            ]);
 
-        if (!is_array($result)) {
+            if (is_array($result)) {
+                foreach ($result as $item) {
+                    if ($item[0] === $hash) {
+                        return Torrent::fromArray($this->torrentFieldsToArray($item));
+                    }
+                }
+            }
+
             throw new RequestException("Torrent with hash {$hash} not found");
-        }
-
-        foreach ($result as $item) {
-            if ($item[0] === $hash) {
-                return Torrent::fromArray($this->mapTorrent($item));
+        } catch (RequestException $e) {
+            if (!str_contains($e->getMessage(), 'invalid target')) {
+                throw $e;
             }
         }
 
-        throw new RequestException("Torrent with hash {$hash} not found");
+        return Torrent::fromArray($this->fetchTorrentFields($hash));
+    }
+
+    private function fetchTorrentFields(string $hash): array
+    {
+        $hashResult = $this->xmlRpc('d.get_hash=', [$hash]);
+
+        if (!is_string($hashResult) || $hashResult === '') {
+            throw new RequestException("Torrent with hash {$hash} not found");
+        }
+
+        return $this->torrentFieldsToArray([
+            $hashResult,
+            $this->xmlRpc('d.get_name=', [$hash]),
+            $this->xmlRpc('d.get_state=', [$hash]),
+            $this->xmlRpc('d.get_size_bytes=', [$hash]),
+            $this->xmlRpc('d.get_left_bytes=', [$hash]),
+            $this->xmlRpc('d.get_directory=', [$hash]),
+            $this->xmlRpc('d.get_complete=', [$hash]),
+            '',
+            '',
+        ]);
+    }
+
+    private function torrentFieldsToArray(array $data): array
+    {
+        $state = (int) ($data[2] ?? 0);
+        $complete = (float) ($data[6] ?? 0.0);
+
+        $status = match (true) {
+            $complete >= 1.0 => 2,
+            $state === 1 => 1,
+            default => 0,
+        };
+
+        return [
+            'hash' => $data[0] ?? '',
+            'hashString' => $data[0] ?? '',
+            'name' => $data[1] ?? '',
+            'status' => $status,
+            'totalSize' => (int) ($data[3] ?? 0),
+            'leftUntilDone' => (int) ($data[4] ?? 0),
+            'downloadDir' => $data[5] ?? '',
+            'percentDone' => $complete,
+        ];
     }
 
     #[Override]
