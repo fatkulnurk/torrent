@@ -24,6 +24,7 @@ class TorrentClientManagerTest extends TestCase
         $this->assertContains('qbittorrent', $drivers);
         $this->assertContains('transmission', $drivers);
         $this->assertContains('rtorrent', $drivers);
+        $this->assertContains('deluge', $drivers);
     }
 
     public function testMakeQbittorrent(): void
@@ -54,7 +55,7 @@ class TorrentClientManagerTest extends TestCase
         $this->expectException(UnsupportedDriverException::class);
         $this->expectExceptionMessage('Available drivers:');
 
-        TorrentClientManager::make('deluge', 'http://localhost:8112');
+        TorrentClientManager::make('unknown_driver', 'http://localhost:8112');
     }
 
     public function testRegister(): void
