@@ -14,7 +14,7 @@ use Override;
 
 class QbittorrentProvider extends AbstractProvider
 {
-    private ?string $sid = null;
+    private ?string $cookie = null;
 
     protected function initialize(): void
     {
@@ -48,11 +48,11 @@ class QbittorrentProvider extends AbstractProvider
                 );
             }
 
-            if (preg_match('/SID=([^;]+)/', $setCookie, $matches)) {
-                $this->sid = $matches[1];
+            if (preg_match('/([^=]*SID[^=]*=[^;]+)/i', $setCookie, $matches)) {
+                $this->cookie = $matches[1];
             }
 
-            if ($this->sid === null) {
+            if ($this->cookie === null) {
                 throw new AuthenticationException(
                     'Failed to extract SID from Set-Cookie header'
                 );
@@ -77,21 +77,29 @@ class QbittorrentProvider extends AbstractProvider
     #[Override]
     protected function request(string $method, string $endpoint, array $options = []): mixed
     {
-        if ($this->sid !== null) {
+        if ($this->cookie !== null) {
             $options['headers'] = array_merge(
                 $options['headers'] ?? [],
-                ['Cookie' => "SID={$this->sid}"]
+                ['Cookie' => $this->cookie]
             );
         }
 
         $response = parent::request($method, $endpoint, $options);
 
+        if (is_array($response)) {
+            return $response;
+        }
+
         if (is_string($response)) {
+            // qBittorrent returns "Ok." for successful mutating operations
+            if (trim($response) === 'Ok.') {
+                return ['saveData' => true];
+            }
+
             try {
                 return json_decode($response, true, 512, JSON_THROW_ON_ERROR);
             } catch (JsonException) {
-                // qBittorrent returns "Ok." for successful mutating operations
-                return ['saveData' => true];
+                return $response;
             }
         }
 
@@ -132,7 +140,7 @@ class QbittorrentProvider extends AbstractProvider
             ]);
         }
 
-        return $response['saveData'] === true;
+        return is_array($response) ? ($response['saveData'] ?? true) : true;
     }
 
     #[Override]
@@ -214,7 +222,11 @@ class QbittorrentProvider extends AbstractProvider
     #[Override]
     public function getServerStatus(): ServerStatus
     {
-        $data = $this->request('GET', 'api/v2/app/coreVersion');
+        $data = $this->request('GET', 'api/v2/app/version');
+
+        if (is_string($data)) {
+            return new ServerStatus(version: trim($data));
+        }
 
         if (!is_array($data)) {
             return new ServerStatus();

@@ -55,10 +55,10 @@ class QbittorrentProviderTest extends TestCase
         $initialize = $reflection->getMethod('initialize');
         $initialize->invoke($provider);
 
-        $sidProperty = $reflection->getProperty('sid');
-        $sid = $sidProperty->getValue($provider);
+        $cookieProperty = $reflection->getProperty('cookie');
+        $cookie = $cookieProperty->getValue($provider);
 
-        $this->assertSame('abc123', $sid);
+        $this->assertSame('SID=abc123', $cookie);
     }
 
     public function testAuthenticateNoCredentials(): void
@@ -255,8 +255,8 @@ class QbittorrentProviderTest extends TestCase
     public function testGetServerStatus(): void
     {
         $provider = $this->createProvider([
-            new Response(200, ['Set-Cookie' => 'SID=abc123; path=/'], ''),
-            new Response(200, [], '{"coreVersion": "4.3.5"}'),
+            new Response(200, ['Set-Cookie' => 'QBT_SID_8080=abc123; path=/'], ''),
+            new Response(200, [], 'v5.2.0'),
         ]);
 
         $reflection = new \ReflectionClass(QbittorrentProvider::class);
@@ -265,6 +265,6 @@ class QbittorrentProviderTest extends TestCase
 
         $status = $provider->getServerStatus();
 
-        $this->assertSame('4.3.5', $status->version);
+        $this->assertSame('v5.2.0', $status->version);
     }
 }
