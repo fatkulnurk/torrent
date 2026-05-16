@@ -30,11 +30,17 @@ abstract class AbstractProvider implements TorrentClientInterface
             $config
         );
 
-        $this->client = new Client([
+        $clientOptions = [
             'base_uri' => $this->baseUrl,
             'timeout' => $this->config['timeout'],
             'verify' => $this->config['verify_ssl'],
-        ]);
+        ];
+
+        if (isset($this->config['auth'])) {
+            $clientOptions['auth'] = $this->config['auth'];
+        }
+
+        $this->client = new Client($clientOptions);
 
         $this->initialize();
     }
