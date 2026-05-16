@@ -18,6 +18,7 @@ Perfect for automation scripts, web-based torrent managers, seedbox dashboards, 
   - [rqbit](#rqbit)
   - [Transmission (no-auth mode)](#transmission-no-auth-mode)
 - [Methods](#methods)
+- [Driver Status](#driver-status)
 - [Drivers](#drivers)
 - [Testing](#testing)
   - [Unit Tests](#unit-tests)
@@ -141,6 +142,30 @@ $torrents = $client->getTorrents();
 | `removeTorrent($hash, $deleteFiles?)` | Remove a torrent |
 | `setDownloadPath($hash, $path)` | Change download directory |
 | `getServerStatus()` | Get server status / version |
+
+## Driver Status
+
+| Method | qBittorrent | Transmission | rTorrent | Deluge | rqbit | aria2 |
+|--------|:-----------:|:------------:|:--------:|:------:|:-----:|:-----:|
+| `addTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `getTorrents` | ✅ | ✅ | ⚠️ | ✅ | ✅ | ✅ |
+| `getTorrent` | ✅ | ✅ | ✅ | ✅ | — | — |
+| `pauseTorrent` | ✅ | ✅ | ✅ | ✅ | — | — |
+| `resumeTorrent` | ✅ | ✅ | ✅ | ✅ | — | — |
+| `removeTorrent` | ✅ | ✅ | ✅ | ✅ | — | — |
+| `setDownloadPath` | ✅ | ✅ | ✅ | ✅ | — | — |
+| `getServerStatus` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+**Legend:**
+
+| Icon | Meaning |
+|------|---------|
+| ✅ | Tested and working (integration + unit tests) |
+| ✓ | Unit tests pass (not verified in integration) |
+| ⚠️ | Known limitation — `d.multicall2` XML-RPC method fails on certain rTorrent images (e.g. crazymax/rtorrent-rutorrent); `getTorrents` may return empty or throw |
+| — | Not implemented by the provider (throws `RequestException`) |
+
+> **Note:** `getTorrent`, `pauseTorrent`, `resumeTorrent`, `removeTorrent`, and `setDownloadPath` are not yet implemented in `RqbitProvider` and `Aria2Provider`.
 
 ## Drivers
 
