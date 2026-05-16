@@ -4,6 +4,27 @@
 
 Perfect for automation scripts, web-based torrent managers, seedbox dashboards, and PHP applications that need BitTorrent client integration.
 
+## Table of Contents
+
+- [Features](#features)
+- [Install](#install)
+- [Quick Start (with Auth)](#quick-start-with-auth)
+  - [qBittorrent](#qbittorrent)
+  - [Transmission](#transmission)
+  - [Deluge](#deluge)
+  - [aria2](#aria2)
+- [Quick Start (without Auth)](#quick-start-without-auth)
+  - [rTorrent](#rtorrent)
+  - [rqbit](#rqbit)
+  - [Transmission (no-auth mode)](#transmission-no-auth-mode)
+- [Methods](#methods)
+- [Drivers](#drivers)
+- [Testing](#testing)
+  - [Unit Tests](#unit-tests)
+  - [Integration Tests](#integration-tests)
+- [Custom Driver](#custom-driver)
+- [License](#license)
+
 ## Features
 
 - **Multi-client support** — works with 6 different torrent clients out of the box
@@ -18,7 +39,9 @@ Perfect for automation scripts, web-based torrent managers, seedbox dashboards, 
 composer require fatkulnurk/torrent
 ```
 
-## Quick Start
+## Quick Start (with Auth)
+
+These providers require authentication credentials:
 
 ### qBittorrent
 
@@ -48,15 +71,6 @@ $client->addTorrent('magnet:?xt=urn:btih:...');
 $torrents = $client->getTorrents();
 ```
 
-### rTorrent
-
-```php
-$client = TorrentClientManager::make('rtorrent', 'http://192.168.1.30:8080');
-
-$client->addTorrent('magnet:?xt=urn:btih:...');
-$torrents = $client->getTorrents();
-```
-
 ### Deluge
 
 ```php
@@ -68,6 +82,34 @@ $client->addTorrent('magnet:?xt=urn:btih:...');
 $torrents = $client->getTorrents();
 ```
 
+### aria2
+
+```php
+$client = TorrentClientManager::make('aria2', 'http://127.0.0.1:6800', [
+    'secret' => 'your-secret-token',
+]);
+
+$client->addTorrent('magnet:?xt=urn:btih:...');
+$torrents = $client->getTorrents();
+```
+
+## Quick Start (without Auth)
+
+These providers work without credentials:
+
+### rTorrent
+
+```php
+$client = TorrentClientManager::make('rtorrent', 'http://192.168.1.30:8080', [
+    'rpc_endpoint' => 'RPC2',
+]);
+
+$client->addTorrent('magnet:?xt=urn:btih:...');
+$torrents = $client->getTorrents();
+```
+
+> The `rpc_endpoint` option defaults to `RPC2`. Set it to `/` when connecting to rTorrent via an SCGI proxy that serves from root (e.g. port 8000 on the crazymax/rtorrent-rutorrent image).
+
 ### rqbit
 
 ```php
@@ -77,12 +119,11 @@ $client->addTorrent('magnet:?xt=urn:btih:...');
 $torrents = $client->getTorrents();
 ```
 
-### aria2
+### Transmission (no-auth mode)
 
 ```php
-$client = TorrentClientManager::make('aria2', 'http://127.0.0.1:6800', [
-    'secret' => 'your-secret-token', // optional
-]);
+$client = TorrentClientManager::make('transmission', 'http://192.168.1.20:9091');
+// No username/password needed if Transmission is configured without auth
 
 $client->addTorrent('magnet:?xt=urn:btih:...');
 $torrents = $client->getTorrents();
@@ -111,6 +152,61 @@ $torrents = $client->getTorrents();
 | `deluge` | `DelugeProvider` | JSON-RPC | password | 8112 |
 | `rqbit` | `RqbitProvider` | REST | none | 3030 |
 | `aria2` | `Aria2Provider` | JSON-RPC | secret token (optional) | 6800 |
+
+## Testing
+
+### Unit Tests
+
+Run all unit tests (no external services required):
+
+```bash
+make test-unit
+# or
+php vendor/bin/phpunit tests/Data tests/Exceptions tests/Providers tests/TorrentClientManagerTest.php
+```
+
+### Integration Tests
+
+Integration tests connect to real torrent client instances via Docker. Start all services and run:
+
+```bash
+make setup
+make up
+make test-integration
+```
+
+The `test-integration` target automatically:
+1. Starts all containers via Docker Compose
+2. Extracts the temporary qBittorrent 5.x password from container logs
+3. Passes it as the `QBITTORRENT_PASSWORD` environment variable
+4. Runs integration tests against all 6 services
+
+To run integration tests manually:
+
+```bash
+# Start containers
+make setup && make up
+
+# Get qBittorrent temp password
+docker logs torrent-qbittorrent 2>&1 | grep -oP 'temporary password is provided for this session: \K\S+'
+
+# Run integration tests
+QB_PASS=<extracted-password> INTEGRATION=true QBITTORRENT_PASSWORD=$QB_PASS php vendor/bin/phpunit tests/integration
+```
+
+Available Docker services:
+
+| Service | URL | Auth |
+|---------|-----|------|
+| qBittorrent | http://localhost:8080 | username: `admin`, password: auto-generated (see logs) |
+| Transmission | http://localhost:9091 | username: `admin`, password: `admin` |
+| rTorrent (XML-RPC) | http://localhost:8000 | none |
+| rTorrent (Web UI) | http://localhost:8081 | none |
+| Deluge | http://localhost:8112 | password: `deluge` |
+| rqbit | http://localhost:3030 | none |
+| aria2 | http://localhost:6800 | secret: `secret123` |
+
+> **Note:** qBittorrent 5.x uses per-session temporary passwords. The password changes on every container restart. Use `make test-integration` to auto-extract it, or run `make qb-password` to view the current password.
 
 ## Custom Driver
 
