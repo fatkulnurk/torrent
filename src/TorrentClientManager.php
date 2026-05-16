@@ -7,6 +7,7 @@ namespace Fatkulnurk\Torrent;
 use Fatkulnurk\Torrent\Contracts\TorrentClientInterface;
 use Fatkulnurk\Torrent\Exceptions\UnsupportedDriverException;
 use Fatkulnurk\Torrent\Providers\QbittorrentProvider;
+use Fatkulnurk\Torrent\Providers\RTorrentProvider;
 use Fatkulnurk\Torrent\Providers\TransmissionProvider;
 
 class TorrentClientManager
@@ -14,6 +15,7 @@ class TorrentClientManager
     private static array $registry = [
         'qbittorrent' => QbittorrentProvider::class,
         'transmission' => TransmissionProvider::class,
+        'rtorrent' => RTorrentProvider::class,
     ];
 
     public static function register(string $name, string $className): void

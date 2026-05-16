@@ -6,6 +6,7 @@ namespace Fatkulnurk\Torrent\Tests;
 
 use Fatkulnurk\Torrent\Exceptions\UnsupportedDriverException;
 use Fatkulnurk\Torrent\Providers\QbittorrentProvider;
+use Fatkulnurk\Torrent\Providers\RTorrentProvider;
 use Fatkulnurk\Torrent\Providers\TransmissionProvider;
 use Fatkulnurk\Torrent\TorrentClientManager;
 use PHPUnit\Framework\TestCase;
@@ -22,6 +23,7 @@ class TorrentClientManagerTest extends TestCase
 
         $this->assertContains('qbittorrent', $drivers);
         $this->assertContains('transmission', $drivers);
+        $this->assertContains('rtorrent', $drivers);
     }
 
     public function testMakeQbittorrent(): void
