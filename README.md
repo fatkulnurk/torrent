@@ -1,8 +1,6 @@
 # fatkulnurk/torrent
 
-SDK PHP untuk mengelola torrent client (qBittorrent & Transmission) via API.
-
-> **Untuk pemula**: Library ini menyatukan cara pakai berbagai torrent client dengan kode yang sama. Tinggal ganti nama driver-nya.
+Unified PHP SDK for multiple torrent clients via their HTTP APIs.
 
 ## Install
 
@@ -40,18 +38,69 @@ $client->addTorrent('magnet:?xt=urn:btih:...');
 $torrents = $client->getTorrents();
 ```
 
+### rTorrent
+
+```php
+$client = TorrentClientManager::make('rtorrent', 'http://192.168.1.30:8080');
+
+$client->addTorrent('magnet:?xt=urn:btih:...');
+$torrents = $client->getTorrents();
+```
+
+### Deluge
+
+```php
+$client = TorrentClientManager::make('deluge', 'http://192.168.1.40:8112', [
+    'password' => 'deluge',
+]);
+
+$client->addTorrent('magnet:?xt=urn:btih:...');
+$torrents = $client->getTorrents();
+```
+
+### rqbit
+
+```php
+$client = TorrentClientManager::make('rqbit', 'http://127.0.0.1:3030');
+
+$client->addTorrent('magnet:?xt=urn:btih:...');
+$torrents = $client->getTorrents();
+```
+
+### aria2
+
+```php
+$client = TorrentClientManager::make('aria2', 'http://127.0.0.1:6800', [
+    'secret' => 'your-secret-token', // optional
+]);
+
+$client->addTorrent('magnet:?xt=urn:btih:...');
+$torrents = $client->getTorrents();
+```
+
 ## Methods
 
-| Method | Fungsi |
-|--------|--------|
-| `addTorrent($source, $options)` | Tambah torrent (magnet, file, atau base64) |
-| `getTorrents($filters)` | Ambil daftar torrent |
-| `getTorrent($hash)` | Ambil detail 1 torrent |
-| `pauseTorrent($hash)` | Pause torrent |
-| `resumeTorrent($hash)` | Resume torrent |
-| `removeTorrent($hash, $deleteFiles?)` | Hapus torrent |
-| `setDownloadPath($hash, $path)` | Pindah folder download |
-| `getServerStatus()` | Status server |
+| Method | Description |
+|--------|-------------|
+| `addTorrent($source, $options)` | Add a torrent (magnet URI, HTTP URL, or base64-encoded .torrent) |
+| `getTorrents($filters)` | List all torrents |
+| `getTorrent($hash)` | Get a single torrent's details |
+| `pauseTorrent($hash)` | Pause a torrent |
+| `resumeTorrent($hash)` | Resume a torrent |
+| `removeTorrent($hash, $deleteFiles?)` | Remove a torrent |
+| `setDownloadPath($hash, $path)` | Change download directory |
+| `getServerStatus()` | Get server status / version |
+
+## Drivers
+
+| Driver | Class | Protocol | Auth | Default Port |
+|--------|-------|----------|------|-------------|
+| `qbittorrent` | `QbittorrentProvider` | REST (cookie) | username + password | 8080 |
+| `transmission` | `TransmissionProvider` | JSON-RPC | username + password (optional) | 9091 |
+| `rtorrent` | `RTorrentProvider` | XML-RPC | none | 8080 (RPC2) |
+| `deluge` | `DelugeProvider` | JSON-RPC | password | 8112 |
+| `rqbit` | `RqbitProvider` | REST | none | 3030 |
+| `aria2` | `Aria2Provider` | JSON-RPC | secret token (optional) | 6800 |
 
 ## Custom Driver
 
@@ -64,7 +113,7 @@ class MyProvider extends AbstractProvider
     protected function initialize(): void {}
 
     public function addTorrent(string $source, array $options = []): bool { /* ... */ }
-    // implement method lainnya...
+    // implement other methods...
 }
 
 TorrentClientManager::register('custom', MyProvider::class);
