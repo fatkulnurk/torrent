@@ -1,10 +1,33 @@
+# dependencies
 /vendor/
 /composer.lock
+
+# cache
 .phpunit.result.cache
 .phpunit.cache
 .php-cs-fixer.cache
-.DS_Store
+.phpstan-cache/
+
+# docker volumes
+/data/
+/docker-compose.override.yml
+
+# IDE
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
 *.log
-/data/
