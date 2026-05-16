@@ -12,15 +12,18 @@ use SimpleXMLElement;
 
 class RTorrentProvider extends AbstractProvider
 {
-    private const RPC_ENDPOINT = 'RPC2';
+    private string $rpcEndpoint = 'RPC2';
 
-    protected function initialize(): void {}
+    protected function initialize(): void
+    {
+        $this->rpcEndpoint = $this->config['rpc_endpoint'] ?? 'RPC2';
+    }
 
     private function xmlRpc(string $method, array $params = []): mixed
     {
         $xml = $this->buildRequest($method, $params);
 
-        $response = parent::request('POST', self::RPC_ENDPOINT, [
+        $response = parent::request('POST', $this->rpcEndpoint, [
             'headers' => ['Content-Type' => 'text/xml'],
             'body' => $xml,
         ]);
