@@ -1,6 +1,6 @@
 {
     "name": "fatkulnurk/torrent",
-    "description": "A unified, type-safe PHP SDK for interacting with various torrent clients (qBittorrent, Transmission) via HTTP/JSON APIs.",
+    "description": "A unified, type-safe PHP SDK for interacting with various torrent clients (qBittorrent, Transmission, rTorrent, Deluge, rqbit, aria2) via HTTP/JSON APIs.",
     "type": "library",
     "license": "MIT",
     "keywords": [
