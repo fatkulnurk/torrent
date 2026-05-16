@@ -1,0 +1,102 @@
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:5.2.0
+    container_name: torrent-qbittorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - WEBUI_PORT=8080
+    ports:
+      - 8080:8080
+      - 6881:6881
+      - 6881:6881/udp
+    volumes:
+      - ./data/qbittorrent/config:/config
+      - ./data/qbittorrent/downloads:/downloads
+    restart: unless-stopped
+
+  transmission:
+    image: lscr.io/linuxserver/transmission:4.1.1
+    container_name: torrent-transmission
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - USER=admin
+      - PASS=admin
+    ports:
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
+    volumes:
+      - ./data/transmission/config:/config
+      - ./data/transmission/downloads:/downloads
+    restart: unless-stopped
+
+  rtorrent:
+    image: crazymax/rtorrent-rutorrent:5.2.10-0.16.7-r0
+    container_name: torrent-rtorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - RT_DEFAULT_SETTINGS=true
+    ports:
+      - 8081:8080
+      - 5000:5000
+      - 6881:6881/udp
+    volumes:
+      - ./data/rtorrent/data:/data
+      - ./data/rtorrent/passwd:/passwd
+    restart: unless-stopped
+
+  deluge:
+    image: lscr.io/linuxserver/deluge:2.1.1
+    container_name: torrent-deluge
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - DELUGE_LOG_FILE=""
+    ports:
+      - 8112:8112
+      - 58846:58846
+      - 58946:58946
+    volumes:
+      - ./data/deluge/config:/config
+      - ./data/deluge/downloads:/downloads
+    restart: unless-stopped
+
+  rqbit:
+    image: ikatson/rqbit:latest
+    container_name: torrent-rqbit
+    ports:
+      - 3030:3030
+      - 4240:4240
+    environment:
+      RQBIT_HTTP_API_LISTEN_ADDR: 0.0.0.0:3030
+    volumes:
+      - ./data/rqbit/db:/home/rqbit/db
+      - ./data/rqbit/cache:/home/rqbit/cache
+      - ./data/rqbit/downloads:/home/rqbit/downloads
+    restart: unless-stopped
+
+  aria2:
+    image: p3terx/aria2-pro:latest
+    container_name: torrent-aria2
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK_SET=022
+      - RPC_SECRET=secret123
+      - RPC_PORT=6800
+      - LISTEN_PORT=6888
+    ports:
+      - 6800:6800
+      - 6888:6888
+      - 6888:6888/udp
+    volumes:
+      - ./data/aria2/config:/config
+      - ./data/aria2/downloads:/downloads
+    restart: unless-stopped
