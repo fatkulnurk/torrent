@@ -25,6 +25,7 @@ class TorrentClientManagerTest extends TestCase
         $this->assertContains('transmission', $drivers);
         $this->assertContains('rtorrent', $drivers);
         $this->assertContains('deluge', $drivers);
+        $this->assertContains('rqbit', $drivers);
     }
 
     public function testMakeQbittorrent(): void
