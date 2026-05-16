@@ -53,7 +53,7 @@ $client = TorrentClientManager::make('qbittorrent', 'http://192.168.1.10:8080', 
     'password' => 'secret',
 ]);
 
-$client->addTorrent('magnet:?xt=urn:btih:...');
+$client->addTorrent('magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny');
 $torrents = $client->getTorrents();
 $client->pauseTorrent('hash123');
 $client->removeTorrent('hash123', true);
@@ -73,7 +73,7 @@ $client = TorrentClientManager::make('transmission', 'http://192.168.1.20:9091',
 // Without auth (if server allows anonymous connections)
 $client = TorrentClientManager::make('transmission', 'http://192.168.1.20:9091');
 
-$client->addTorrent('magnet:?xt=urn:btih:...');
+$client->addTorrent('magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny');
 $torrents = $client->getTorrents();
 ```
 
@@ -87,7 +87,7 @@ $client = TorrentClientManager::make('rtorrent', 'http://192.168.1.30:8080', [
     'rpc_endpoint' => 'RPC2',
 ]);
 
-$client->addTorrent('magnet:?xt=urn:btih:...');
+$client->addTorrent('magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny');
 $torrents = $client->getTorrents();
 ```
 
@@ -103,7 +103,7 @@ $client = TorrentClientManager::make('deluge', 'http://192.168.1.40:8112', [
     'password' => 'deluge',
 ]);
 
-$client->addTorrent('magnet:?xt=urn:btih:...');
+$client->addTorrent('magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny');
 $torrents = $client->getTorrents();
 ```
 
@@ -115,7 +115,7 @@ rqbit has no authentication by default.
 // Without auth (default)
 $client = TorrentClientManager::make('rqbit', 'http://127.0.0.1:3030');
 
-$client->addTorrent('magnet:?xt=urn:btih:...');
+$client->addTorrent('magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny');
 $torrents = $client->getTorrents();
 ```
 
@@ -132,7 +132,7 @@ $client = TorrentClientManager::make('aria2', 'http://127.0.0.1:6800', [
 // Without auth (if server allows)
 $client = TorrentClientManager::make('aria2', 'http://127.0.0.1:6800');
 
-$client->addTorrent('magnet:?xt=urn:btih:...');
+$client->addTorrent('magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny');
 $torrents = $client->getTorrents();
 ```
 
