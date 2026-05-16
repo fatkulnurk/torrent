@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Fatkulnurk\Torrent\Tests\Providers;
@@ -19,8 +20,8 @@ class QbittorrentProviderTest extends TestCase
         $handler = HandlerStack::create($mock);
 
         $config['handler'] = $handler;
-        $config['username'] = $config['username'] ?? 'admin';
-        $config['password'] = $config['password'] ?? 'password';
+        $config['username'] ??= 'admin';
+        $config['password'] ??= 'password';
 
         $reflection = new \ReflectionClass(QbittorrentProvider::class);
         $provider = $reflection->newInstanceWithoutConstructor();
@@ -62,7 +63,26 @@ class QbittorrentProviderTest extends TestCase
 
     public function testAuthenticateNoCredentials(): void
     {
-        $this->assertTrue(true);
+        $this->expectException(AuthenticationException::class);
+        $this->expectExceptionMessage('Username and password are required');
+
+        $reflection = new \ReflectionClass(QbittorrentProvider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, ['timeout' => 10.0, 'verify_ssl' => true]);
+
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://localhost:8080');
+
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue(
+            $provider,
+            new \GuzzleHttp\Client(['handler' => \GuzzleHttp\HandlerStack::create(new \GuzzleHttp\Handler\MockHandler([]))])
+        );
+
+        $initialize = $reflection->getMethod('initialize');
+        $initialize->invoke($provider);
     }
 
     public function testAuthenticateNoSetCookie(): void

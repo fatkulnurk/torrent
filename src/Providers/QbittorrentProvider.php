@@ -8,6 +8,8 @@ use Fatkulnurk\Torrent\Data\ServerStatus;
 use Fatkulnurk\Torrent\Data\Torrent;
 use Fatkulnurk\Torrent\Exceptions\AuthenticationException;
 use Fatkulnurk\Torrent\Exceptions\RequestException;
+use GuzzleHttp\Exception\GuzzleException;
+use JsonException;
 use Override;
 
 class QbittorrentProvider extends AbstractProvider
@@ -63,6 +65,12 @@ class QbittorrentProvider extends AbstractProvider
                 $e->getCode(),
                 $e
             );
+        } catch (GuzzleException $e) {
+            throw new AuthenticationException(
+                "Authentication request failed: {$e->getMessage()}",
+                $e->getCode(),
+                $e
+            );
         }
     }
 
@@ -79,8 +87,12 @@ class QbittorrentProvider extends AbstractProvider
         $response = parent::request($method, $endpoint, $options);
 
         if (is_string($response)) {
-            $decoded = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
-            return $decoded;
+            try {
+                return json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+            } catch (JsonException) {
+                // qBittorrent returns "Ok." for successful mutating operations
+                return ['saveData' => true];
+            }
         }
 
         return $response;
@@ -91,9 +103,10 @@ class QbittorrentProvider extends AbstractProvider
     {
         if (preg_match('/^magnet:\?xt=urn:btih:/i', $source)) {
             $response = $this->request('POST', 'api/v2/torrents/add', [
-                'form_params' => array_merge([
-                    'urls' => $source,
-                ], $options),
+                'form_params' => array_merge(
+                    $options,
+                    ['urls' => $source]
+                ),
             ]);
         } elseif (is_file($source)) {
             $response = $this->request('POST', 'api/v2/torrents/add', [
@@ -106,9 +119,15 @@ class QbittorrentProvider extends AbstractProvider
                 ],
             ]);
         } else {
+            $decoded = base64_decode($source, true);
+
+            if ($decoded === false) {
+                throw new RequestException('Invalid base64 encoded torrent data');
+            }
+
             $response = $this->request('POST', 'api/v2/torrents/add', [
                 'form_params' => [
-                    'torrent_files' => base64_decode($source),
+                    'torrent_files' => $decoded,
                 ],
             ]);
         }

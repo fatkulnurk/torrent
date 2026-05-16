@@ -1,102 +1,75 @@
 # fatkulnurk/torrent
 
-A unified, type-safe PHP SDK for interacting with various torrent clients (qBittorrent, Transmission) via HTTP/JSON APIs.
+SDK PHP untuk mengelola torrent client (qBittorrent & Transmission) via API.
 
-## Requirements
+> **Untuk pemula**: Library ini menyatukan cara pakai berbagai torrent client dengan kode yang sama. Tinggal ganti nama driver-nya.
 
-- PHP 8.3+
-- Guzzle HTTP 7.8+
-
-## Installation
+## Install
 
 ```bash
 composer require fatkulnurk/torrent
 ```
 
-## Usage
+## Quick Start
 
 ### qBittorrent
 
 ```php
 use Fatkulnurk\Torrent\TorrentClientManager;
 
-$qb = TorrentClientManager::make('qbittorrent', 'http://192.168.1.10:8080', [
+$client = TorrentClientManager::make('qbittorrent', 'http://192.168.1.10:8080', [
     'username' => 'admin',
     'password' => 'secret',
 ]);
 
-$qb->addTorrent('magnet:?xt=urn:btih:...', ['savepath' => '/downloads']);
-
-$torrents = $qb->getTorrents();
-
-$qb->pauseTorrent('hash123');
-
-$qb->removeTorrent('hash123', true);
+$client->addTorrent('magnet:?xt=urn:btih:...');
+$torrents = $client->getTorrents();
+$client->pauseTorrent('hash123');
+$client->removeTorrent('hash123', true);
 ```
 
 ### Transmission
 
 ```php
-use Fatkulnurk\Torrent\TorrentClientManager;
-
-$tr = TorrentClientManager::make('transmission', 'http://192.168.1.20:9091', [
-    'username' => 'transmission',
+$client = TorrentClientManager::make('transmission', 'http://192.168.1.20:9091', [
+    'username' => 'admin',
     'password' => 'secret',
 ]);
 
-$tr->addTorrent('magnet:?xt=urn:btih:...', ['savepath' => '/downloads']);
-
-$torrents = $tr->getTorrents();
-
-$tr->pauseTorrent('hash123');
+$client->addTorrent('magnet:?xt=urn:btih:...');
+$torrents = $client->getTorrents();
 ```
 
-### Custom Provider
+## Methods
 
-You can add custom providers (e.g., Deluge, rTorrent) without modifying the core SDK:
+| Method | Fungsi |
+|--------|--------|
+| `addTorrent($source, $options)` | Tambah torrent (magnet, file, atau base64) |
+| `getTorrents($filters)` | Ambil daftar torrent |
+| `getTorrent($hash)` | Ambil detail 1 torrent |
+| `pauseTorrent($hash)` | Pause torrent |
+| `resumeTorrent($hash)` | Resume torrent |
+| `removeTorrent($hash, $deleteFiles?)` | Hapus torrent |
+| `setDownloadPath($hash, $path)` | Pindah folder download |
+| `getServerStatus()` | Status server |
+
+## Custom Driver
 
 ```php
 use Fatkulnurk\Torrent\TorrentClientManager;
 use Fatkulnurk\Torrent\Providers\AbstractProvider;
-use Fatkulnurk\Torrent\Contracts\TorrentClientInterface;
 
-class DelugeProvider extends AbstractProvider implements TorrentClientInterface
+class MyProvider extends AbstractProvider
 {
-    protected function initialize(): void
-    {
-        // Custom initialization logic
-    }
+    protected function initialize(): void {}
 
-    #[Override]
-    public function addTorrent(string $source, array $options = []): bool
-    {
-        // Custom implementation
-    }
-
-    // Implement other interface methods...
+    public function addTorrent(string $source, array $options = []): bool { /* ... */ }
+    // implement method lainnya...
 }
 
-TorrentClientManager::register('deluge', DelugeProvider::class);
-
-$del = TorrentClientManager::make('deluge', 'http://192.168.1.30:8112', [
-    'password' => 'pass',
-]);
+TorrentClientManager::register('custom', MyProvider::class);
+$client = TorrentClientManager::make('custom', 'http://...');
 ```
-
-## API Reference
-
-### TorrentClientInterface
-
-| Method | Description |
-|--------|-------------|
-| `addTorrent(string $source, array $options = []): bool` | Add a torrent from magnet URI, file path, or base64 string |
-| `getTorrents(array $filters = []): array` | Get all torrents with optional filters |
-| `getTorrent(string $hash): array` | Get a specific torrent by hash |
-| `pauseTorrent(string $hash): bool` | Pause a torrent |
-| `resumeTorrent(string $hash): bool` | Resume a torrent |
-| `removeTorrent(string $hash, bool $deleteFiles = false): bool` | Remove a torrent optionally deleting files |
-| `setDownloadPath(string $hash, string $path): bool` | Set download path for a torrent |
-| `getServerStatus(): array` | Get server status information |
 
 ## License
 

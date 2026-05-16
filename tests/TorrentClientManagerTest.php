@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Fatkulnurk\Torrent\Tests;
@@ -11,13 +12,9 @@ use PHPUnit\Framework\TestCase;
 
 class TorrentClientManagerTest extends TestCase
 {
-    protected function setUp(): void
-    {
-    }
+    protected function setUp(): void {}
 
-    protected function tearDown(): void
-    {
-    }
+    protected function tearDown(): void {}
 
     public function testAvailableDrivers(): void
     {

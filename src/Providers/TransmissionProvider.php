@@ -8,6 +8,7 @@ use Fatkulnurk\Torrent\Data\ServerStatus;
 use Fatkulnurk\Torrent\Data\Torrent;
 use Fatkulnurk\Torrent\Exceptions\RequestException;
 use GuzzleHttp\Exception\RequestException as GuzzleRequestException;
+use JsonException;
 use Override;
 
 class TransmissionProvider extends AbstractProvider
@@ -67,6 +68,12 @@ class TransmissionProvider extends AbstractProvider
             }
 
             return $response;
+        } catch (JsonException $e) {
+            throw new RequestException(
+                "Failed to parse Transmission response: {$e->getMessage()}",
+                0,
+                $e
+            );
         } catch (RequestException $e) {
             if ($e->getCode() === 409 && !$this->hasRetried) {
                 $this->hasRetried = true;
@@ -102,15 +109,23 @@ class TransmissionProvider extends AbstractProvider
                 file_get_contents($source)
             );
         } else {
-            $args['metainfo'] = base64_decode($source);
+            $decoded = base64_decode($source, true);
+
+            if ($decoded === false) {
+                throw new RequestException('Invalid base64 encoded torrent data');
+            }
+
+            $args['metainfo'] = $decoded;
         }
 
         if (isset($options['savepath'])) {
             $args['download-dir'] = $options['savepath'];
         }
 
+        unset($options['savepath']);
+
         $result = $this->request('torrent-add', 'transmission/rpc', [
-            'args' => array_merge($args, $options),
+            'args' => array_merge($options, $args),
         ]);
 
         return isset($result['torrent-added']) || isset($result['torrent-duplicate']);
