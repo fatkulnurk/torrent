@@ -171,7 +171,7 @@ class DelugeProvider extends AbstractProvider
                 throw new RequestException('Invalid base64 encoded torrent data');
             }
 
-            $this->jsonRpc('core.add_torrent_file', ['torrent.torrent', $source, $options]);
+            $this->jsonRpc('core.add_torrent_file', ['torrent.torrent', $decoded, $options]);
         }
 
         return true;

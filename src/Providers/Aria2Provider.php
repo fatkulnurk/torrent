@@ -91,7 +91,7 @@ class Aria2Provider extends AbstractProvider
                 throw new RequestException('Invalid base64 encoded torrent data');
             }
 
-            $this->jsonRpc('aria2.addTorrent', [$source, $options]);
+            $this->jsonRpc('aria2.addTorrent', [$decoded, $options]);
         }
 
         return true;
