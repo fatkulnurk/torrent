@@ -183,4 +183,26 @@ final class AllProvidersTest extends TestCase
 
         $this->exerciseAllMethods($provider, 'Transmission');
     }
+
+    public function testPorla(): void
+    {
+        $config = [
+            'save_path' => getenv('PORLA_SAVE_PATH') ?: '/dl',
+        ];
+
+        $token = getenv('PORLA_TOKEN');
+
+        if ($token !== false && $token !== '') {
+            $config['token'] = $token;
+        }
+
+        $provider = $this->connectProvider(
+            'porla',
+            'Porla',
+            getenv('PORLA_URL') ?: 'http://localhost:1337',
+            $config,
+        );
+
+        $this->exerciseAllMethods($provider, 'Porla');
+    }
 }

@@ -35,6 +35,7 @@ setup:
 	mkdir -p data/deluge/config data/deluge/downloads
 	mkdir -p data/rqbit/db data/rqbit/cache data/rqbit/downloads
 	mkdir -p data/aria2/config data/aria2/downloads
+	mkdir -p data/porla/state data/porla/downloads
 
 clean:
 	rm -rf data
