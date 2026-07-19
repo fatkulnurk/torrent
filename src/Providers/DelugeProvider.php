@@ -165,13 +165,11 @@ class DelugeProvider extends AbstractProvider
             $data = base64_encode(file_get_contents($source));
             $this->jsonRpc('core.add_torrent_file', [$filename, $data, $options]);
         } else {
-            $decoded = base64_decode($source, true);
-
-            if ($decoded === false) {
+            if (base64_decode($source, true) === false) {
                 throw new RequestException('Invalid base64 encoded torrent data');
             }
 
-            $this->jsonRpc('core.add_torrent_file', ['torrent.torrent', $decoded, $options]);
+            $this->jsonRpc('core.add_torrent_file', ['torrent.torrent', $source, $options]);
         }
 
         return true;
@@ -212,14 +210,14 @@ class DelugeProvider extends AbstractProvider
     #[Override]
     public function pauseTorrent(string $hash): bool
     {
-        $this->jsonRpc('core.pause_torrent', [[$hash]]);
+        $this->jsonRpc('core.pause_torrent', [$hash]);
         return true;
     }
 
     #[Override]
     public function resumeTorrent(string $hash): bool
     {
-        $this->jsonRpc('core.resume_torrent', [[$hash]]);
+        $this->jsonRpc('core.resume_torrent', [$hash]);
         return true;
     }
 
@@ -240,10 +238,14 @@ class DelugeProvider extends AbstractProvider
     #[Override]
     public function getServerStatus(): ServerStatus
     {
-        $version = $this->jsonRpc('daemon.get_version');
+        try {
+            $version = $this->jsonRpc('daemon.get_version');
 
-        return new ServerStatus(
-            version: is_string($version) ? $version : null,
-        );
+            return new ServerStatus(
+                version: is_string($version) ? $version : null,
+            );
+        } catch (RequestException) {
+            return new ServerStatus();
+        }
     }
 }

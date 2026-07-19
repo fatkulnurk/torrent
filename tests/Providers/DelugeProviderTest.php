@@ -258,20 +258,77 @@ class DelugeProviderTest extends TestCase
 
     public function testPauseTorrent(): void
     {
-        $provider = $this->createProvider([
+        $container = [];
+        $history = \GuzzleHttp\Middleware::history($container);
+        $mock = new MockHandler([
             new Response(200, ['Set-Cookie' => '_session_id=abc123; Path=/; HttpOnly'], $this->jsonRpcResult(true)),
             new Response(200, [], $this->jsonRpcResult([['host_id_1', '127.0.0.1', 58846, 'local', 'pass']])),
             new Response(200, [], $this->jsonRpcResult(true)),
             new Response(200, [], $this->jsonRpcResult(true)),
         ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
 
         $reflection = new \ReflectionClass(DelugeProvider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue($provider, new \GuzzleHttp\Client(['handler' => $handler]));
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, [
+            'timeout' => 10.0,
+            'verify_ssl' => true,
+            'password' => 'deluge',
+        ]);
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://localhost:8112');
+
         $initialize = $reflection->getMethod('initialize');
         $initialize->invoke($provider);
 
         $result = $provider->pauseTorrent('hash1');
 
         $this->assertTrue($result);
+        $body = json_decode((string) $container[3]['request']->getBody(), true);
+        $this->assertSame('core.pause_torrent', $body['method']);
+        $this->assertSame(['hash1'], $body['params']);
+    }
+
+    public function testAddTorrentBase64KeepsFiledumpEncoded(): void
+    {
+        $container = [];
+        $history = \GuzzleHttp\Middleware::history($container);
+        $mock = new MockHandler([
+            new Response(200, ['Set-Cookie' => '_session_id=abc123; Path=/; HttpOnly'], $this->jsonRpcResult(true)),
+            new Response(200, [], $this->jsonRpcResult([['host_id_1', '127.0.0.1', 58846, 'local', 'pass']])),
+            new Response(200, [], $this->jsonRpcResult(true)),
+            new Response(200, [], $this->jsonRpcResult(true)),
+        ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
+
+        $reflection = new \ReflectionClass(DelugeProvider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue($provider, new \GuzzleHttp\Client(['handler' => $handler]));
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, [
+            'timeout' => 10.0,
+            'verify_ssl' => true,
+            'password' => 'deluge',
+        ]);
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://localhost:8112');
+
+        $initialize = $reflection->getMethod('initialize');
+        $initialize->invoke($provider);
+
+        $encoded = base64_encode('fake torrent data');
+        $result = $provider->addTorrent($encoded);
+
+        $this->assertTrue($result);
+        $body = json_decode((string) $container[3]['request']->getBody(), true);
+        $this->assertSame('core.add_torrent_file', $body['method']);
+        $this->assertSame($encoded, $body['params'][1]);
     }
 
     public function testResumeTorrent(): void

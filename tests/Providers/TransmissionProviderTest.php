@@ -79,6 +79,33 @@ class TransmissionProviderTest extends TestCase
         $this->assertTrue($result);
     }
 
+    public function testAddTorrentBase64KeepsMetainfoEncoded(): void
+    {
+        $container = [];
+        $history = \GuzzleHttp\Middleware::history($container);
+        $mock = new MockHandler([
+            new Response(200, [], '{"result": "success", "arguments": {"torrent-added": {}}}'),
+        ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
+
+        $reflection = new \ReflectionClass(TransmissionProvider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue($provider, new \GuzzleHttp\Client(['handler' => $handler]));
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, ['timeout' => 10.0, 'verify_ssl' => true]);
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://localhost:9091');
+
+        $encoded = base64_encode('fake torrent data');
+        $result = $provider->addTorrent($encoded);
+
+        $this->assertTrue($result);
+        $body = json_decode((string) $container[0]['request']->getBody(), true);
+        $this->assertSame($encoded, $body['arguments']['metainfo']);
+    }
+
     public function testAddTorrentDuplicate(): void
     {
         $provider = $this->createProvider([
@@ -194,13 +221,30 @@ class TransmissionProviderTest extends TestCase
 
     public function testSetDownloadPath(): void
     {
-        $provider = $this->createProvider([
+        $container = [];
+        $history = \GuzzleHttp\Middleware::history($container);
+        $mock = new MockHandler([
             new Response(200, [], '{"result": "success", "arguments": {}}'),
         ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
+
+        $reflection = new \ReflectionClass(TransmissionProvider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue($provider, new \GuzzleHttp\Client(['handler' => $handler]));
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, ['timeout' => 10.0, 'verify_ssl' => true]);
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://localhost:9091');
 
         $result = $provider->setDownloadPath('hash1', '/new/path');
 
         $this->assertTrue($result);
+        $body = json_decode((string) $container[0]['request']->getBody(), true);
+        $this->assertSame('torrent-set-location', $body['method']);
+        $this->assertSame('/new/path', $body['arguments']['location']);
+        $this->assertTrue($body['arguments']['move']);
     }
 
     public function testGetServerStatus(): void

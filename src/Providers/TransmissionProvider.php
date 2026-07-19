@@ -63,6 +63,8 @@ class TransmissionProvider extends AbstractProvider
                 );
             }
 
+            $this->hasRetried = false;
+
             if (isset($response['arguments'])) {
                 return $response['arguments'];
             }
@@ -109,13 +111,11 @@ class TransmissionProvider extends AbstractProvider
                 file_get_contents($source)
             );
         } else {
-            $decoded = base64_decode($source, true);
-
-            if ($decoded === false) {
+            if (base64_decode($source, true) === false) {
                 throw new RequestException('Invalid base64 encoded torrent data');
             }
 
-            $args['metainfo'] = $decoded;
+            $args['metainfo'] = $source;
         }
 
         if (isset($options['savepath'])) {
@@ -226,10 +226,11 @@ class TransmissionProvider extends AbstractProvider
     #[Override]
     public function setDownloadPath(string $hash, string $path): bool
     {
-        $this->request('torrent-set', 'transmission/rpc', [
+        $this->request('torrent-set-location', 'transmission/rpc', [
             'args' => [
                 'ids' => [$hash],
-                'download-dir' => $path,
+                'location' => $path,
+                'move' => true,
             ],
         ]);
 

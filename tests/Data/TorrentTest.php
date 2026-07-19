@@ -58,6 +58,27 @@ class TorrentTest extends TestCase
         $this->assertSame(0.0, $torrent->percentDone);
     }
 
+    public function testFromArrayCastsStringyValues(): void
+    {
+        $torrent = Torrent::fromArray([
+            'hash' => 12345,
+            'name' => 99,
+            'status' => '4',
+            'totalSize' => '1024000',
+            'leftUntilDone' => '512',
+            'downloadDir' => 0,
+            'percentDone' => '0.75',
+        ]);
+
+        $this->assertSame('12345', $torrent->hash);
+        $this->assertSame('99', $torrent->name);
+        $this->assertSame(4, $torrent->status);
+        $this->assertSame(1024000, $torrent->totalSize);
+        $this->assertSame(512, $torrent->leftUntilDone);
+        $this->assertSame('0', $torrent->downloadDir);
+        $this->assertSame(0.75, $torrent->percentDone);
+    }
+
     public function testCollection(): void
     {
         $data = [

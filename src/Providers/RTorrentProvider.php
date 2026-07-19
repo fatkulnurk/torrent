@@ -59,8 +59,15 @@ class RTorrentProvider extends AbstractProvider
             is_array($value) => '<value><array><data>'
                 . implode('', array_map(fn(mixed $item): string => $this->buildValue($item), $value))
                 . '</data></array></value>',
+            is_string($value) && $this->isBinaryString($value)
+                => '<value><base64>' . base64_encode($value) . '</base64></value>',
             default => '<value><string>' . htmlspecialchars((string) $value, ENT_XML1) . '</string></value>',
         };
+    }
+
+    private function isBinaryString(string $value): bool
+    {
+        return str_contains($value, "\0") || !mb_check_encoding($value, 'UTF-8');
     }
 
     private function parseResponse(string $xml): mixed
@@ -139,8 +146,7 @@ class RTorrentProvider extends AbstractProvider
         if (preg_match('/^magnet:\?xt=urn:btih:/i', $source)) {
             $this->xmlRpc('load.start', [$source]);
         } elseif (is_file($source)) {
-            $data = base64_encode(file_get_contents($source));
-            $this->xmlRpc('load.raw_start', [$data]);
+            $this->xmlRpc('load.raw_start', [file_get_contents($source)]);
         } else {
             $decoded = base64_decode($source, true);
 
@@ -160,13 +166,13 @@ class RTorrentProvider extends AbstractProvider
         try {
             $result = $this->xmlRpc('d.multicall2', [
                 'main',
-                'd.get_hash=',
-                'd.get_name=',
-                'd.get_state=',
-                'd.get_size_bytes=',
-                'd.get_left_bytes=',
-                'd.get_directory=',
-                'd.get_complete=',
+                'd.hash=',
+                'd.name=',
+                'd.state=',
+                'd.size_bytes=',
+                'd.left_bytes=',
+                'd.directory=',
+                'd.complete=',
                 'd.is_open=',
                 'd.is_active=',
             ]);
@@ -217,13 +223,13 @@ class RTorrentProvider extends AbstractProvider
         try {
             $result = $this->xmlRpc('d.multicall2', [
                 'main',
-                'd.get_hash=',
-                'd.get_name=',
-                'd.get_state=',
-                'd.get_size_bytes=',
-                'd.get_left_bytes=',
-                'd.get_directory=',
-                'd.get_complete=',
+                'd.hash=',
+                'd.name=',
+                'd.state=',
+                'd.size_bytes=',
+                'd.left_bytes=',
+                'd.directory=',
+                'd.complete=',
                 'd.is_open=',
                 'd.is_active=',
             ]);
@@ -248,7 +254,7 @@ class RTorrentProvider extends AbstractProvider
 
     private function fetchTorrentFields(string $hash): array
     {
-        $hashResult = $this->xmlRpc('d.get_hash=', [$hash]);
+        $hashResult = $this->xmlRpc('d.hash=', [$hash]);
 
         if (!is_string($hashResult) || $hashResult === '') {
             throw new RequestException("Torrent with hash {$hash} not found");
@@ -256,12 +262,12 @@ class RTorrentProvider extends AbstractProvider
 
         return $this->torrentFieldsToArray([
             $hashResult,
-            $this->xmlRpc('d.get_name=', [$hash]),
-            $this->xmlRpc('d.get_state=', [$hash]),
-            $this->xmlRpc('d.get_size_bytes=', [$hash]),
-            $this->xmlRpc('d.get_left_bytes=', [$hash]),
-            $this->xmlRpc('d.get_directory=', [$hash]),
-            $this->xmlRpc('d.get_complete=', [$hash]),
+            $this->xmlRpc('d.name=', [$hash]),
+            $this->xmlRpc('d.state=', [$hash]),
+            $this->xmlRpc('d.size_bytes=', [$hash]),
+            $this->xmlRpc('d.left_bytes=', [$hash]),
+            $this->xmlRpc('d.directory=', [$hash]),
+            $this->xmlRpc('d.complete=', [$hash]),
             '',
             '',
         ]);
@@ -270,10 +276,13 @@ class RTorrentProvider extends AbstractProvider
     private function torrentFieldsToArray(array $data): array
     {
         $state = (int) ($data[2] ?? 0);
-        $complete = (float) ($data[6] ?? 0.0);
+        $totalSize = (int) ($data[3] ?? 0);
+        $leftUntilDone = (int) ($data[4] ?? 0);
+        $complete = (int) ($data[6] ?? 0);
+        $percentDone = $totalSize > 0 ? ($totalSize - $leftUntilDone) / $totalSize : 0.0;
 
         $status = match (true) {
-            $complete >= 1.0 => 2,
+            $complete === 1 => 2,
             $state === 1 => 1,
             default => 0,
         };
@@ -283,10 +292,10 @@ class RTorrentProvider extends AbstractProvider
             'hashString' => $data[0] ?? '',
             'name' => $data[1] ?? '',
             'status' => $status,
-            'totalSize' => (int) ($data[3] ?? 0),
-            'leftUntilDone' => (int) ($data[4] ?? 0),
+            'totalSize' => $totalSize,
+            'leftUntilDone' => $leftUntilDone,
             'downloadDir' => $data[5] ?? '',
-            'percentDone' => $complete,
+            'percentDone' => $percentDone,
         ];
     }
 
@@ -314,7 +323,7 @@ class RTorrentProvider extends AbstractProvider
     #[Override]
     public function setDownloadPath(string $hash, string $path): bool
     {
-        $this->xmlRpc('d.set_directory', [$hash, $path]);
+        $this->xmlRpc('d.directory.set', [$hash, $path]);
         return true;
     }
 

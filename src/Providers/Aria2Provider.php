@@ -85,13 +85,11 @@ class Aria2Provider extends AbstractProvider
         ) {
             $this->jsonRpc('aria2.addUri', [[$source], $options]);
         } else {
-            $decoded = base64_decode($source, true);
-
-            if ($decoded === false) {
+            if (base64_decode($source, true) === false) {
                 throw new RequestException('Invalid base64 encoded torrent data');
             }
 
-            $this->jsonRpc('aria2.addTorrent', [$decoded, $options]);
+            $this->jsonRpc('aria2.addTorrent', [$source, [], $options]);
         }
 
         return true;
@@ -179,7 +177,9 @@ class Aria2Provider extends AbstractProvider
 
         $name = '';
 
-        if (isset($data['bittorrent']['name'])) {
+        if (isset($data['bittorrent']['info']['name'])) {
+            $name = $data['bittorrent']['info']['name'];
+        } elseif (isset($data['bittorrent']['name'])) {
             $name = $data['bittorrent']['name'];
         } elseif (!empty($data['files'][0]['path'])) {
             $name = basename($data['files'][0]['path']);
