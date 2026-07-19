@@ -8,6 +8,7 @@ use Fatkulnurk\Torrent\Contracts\TorrentClientInterface;
 use Fatkulnurk\Torrent\Exceptions\UnsupportedDriverException;
 use Fatkulnurk\Torrent\Providers\Aria2Provider;
 use Fatkulnurk\Torrent\Providers\DelugeProvider;
+use Fatkulnurk\Torrent\Providers\PorlaProvider;
 use Fatkulnurk\Torrent\Providers\QbittorrentProvider;
 use Fatkulnurk\Torrent\Providers\RqbitProvider;
 use Fatkulnurk\Torrent\Providers\RTorrentProvider;
@@ -22,6 +23,7 @@ class TorrentClientManager
         'deluge' => DelugeProvider::class,
         'rqbit' => RqbitProvider::class,
         'aria2' => Aria2Provider::class,
+        'porla' => PorlaProvider::class,
     ];
 
     public static function register(string $name, string $className): void

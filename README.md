@@ -3,7 +3,7 @@
 [![Latest release](https://img.shields.io/github/v/release/fatkulnurk/torrent)](https://github.com/fatkulnurk/torrent/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Unified PHP SDK** for torrent clients — one API for **qBittorrent**, **Transmission**, **rTorrent**, **Deluge**, **rqbit**, and **aria2**.
+**Unified PHP SDK** for torrent clients — one API for **qBittorrent**, **Transmission**, **rTorrent**, **Deluge**, **rqbit**, **aria2**, and **[Porla](https://github.com/porla/porla)**.
 
 Add magnets or `.torrent` files, list progress, pause/resume, remove torrents, and read server version from PHP automation, seedbox tools, or web dashboards.
 
@@ -24,6 +24,7 @@ Requires **PHP 8.3+** and [Guzzle](https://docs.guzzlephp.org/) 7.
   - [Deluge](#deluge)
   - [rqbit](#rqbit)
   - [aria2](#aria2)
+  - [Porla](#porla)
 - [Methods](#methods)
 - [Torrent data](#torrent-data)
 - [Driver status](#driver-status)
@@ -34,7 +35,7 @@ Requires **PHP 8.3+** and [Guzzle](https://docs.guzzlephp.org/) 7.
 
 ## Features
 
-- **Six clients, one interface** — switch drivers without rewriting app code
+- **Seven clients, one interface** — switch drivers without rewriting app code
 - **Normalized `Torrent` DTO** — hash, name, size, progress, path, and status mapped from each client’s API
 - **Flexible add sources** — magnet URI, HTTP(S) URL (where supported), or base64-encoded `.torrent`
 - **Strict typing** — PHP 8.3+, readonly data objects, PSR-4 autoload
@@ -159,6 +160,28 @@ $client->addTorrent('magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1
 $torrents = $client->getTorrents();
 ```
 
+### Porla
+
+[Porla](https://porla.org) uses JSON-RPC at `/api/v1/jsonrpc` with optional JWT bearer auth. Prefer setting a default `save_path` (required by `torrents.add` unless a preset supplies one). Production should use a JWT from `porla auth:token`; Docker integration in this repo disables auth for local testing only.
+
+```php
+// With JWT (recommended)
+$client = TorrentClientManager::make('porla', 'http://127.0.0.1:1337', [
+    'token' => 'your-jwt-token',
+    'save_path' => '/dl',
+]);
+
+// Auth disabled (dev / docker only)
+$client = TorrentClientManager::make('porla', 'http://127.0.0.1:1337', [
+    'save_path' => '/dl',
+]);
+
+$client->addTorrent('magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big+Buck+Bunny');
+$torrents = $client->getTorrents();
+$client->pauseTorrent($torrents[0]->hash);
+$client->setDownloadPath($torrents[0]->hash, '/dl/other');
+```
+
 ## Methods
 
 | Method | Description |
@@ -201,16 +224,16 @@ Native status codes still differ per client; use this field as a coarse UI signa
 
 ## Driver status
 
-| Method | qBittorrent | Transmission | rTorrent | Deluge | rqbit | aria2 |
-|--------|:-----------:|:------------:|:--------:|:------:|:-----:|:-----:|
-| `addTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `getTorrents` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `getTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `pauseTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `resumeTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `removeTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `setDownloadPath` | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| `getServerStatus` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Method | qBittorrent | Transmission | rTorrent | Deluge | rqbit | aria2 | Porla |
+|--------|:-----------:|:------------:|:--------:|:------:|:-----:|:-----:|:-----:|
+| `addTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `getTorrents` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `getTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `pauseTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `resumeTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `removeTorrent` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `setDownloadPath` | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| `getServerStatus` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 | Icon | Meaning |
 |------|---------|
@@ -227,6 +250,7 @@ Native status codes still differ per client; use this field as a coarse UI signa
 | `deluge` | `DelugeProvider` | JSON-RPC (Web UI) | password | 8112 |
 | `rqbit` | `RqbitProvider` | REST | none by default | 3030 |
 | `aria2` | `Aria2Provider` | JSON-RPC | secret token (optional) | 6800 |
+| `porla` | `PorlaProvider` | JSON-RPC (`/api/v1/jsonrpc`) | JWT bearer (optional if auth disabled) | 1337 |
 
 ## Testing
 
@@ -250,7 +274,7 @@ make up
 make test-integration
 ```
 
-`make test-integration` starts containers, reads the temporary qBittorrent 5.x password from logs, and runs the suite against all six services.
+`make test-integration` starts containers, reads the temporary qBittorrent 5.x password from logs, and runs the suite against all seven services.
 
 Manual run:
 
@@ -270,6 +294,7 @@ Docker services used by this repo:
 | Deluge | `lscr.io/linuxserver/deluge` | 2.1.1 | http://localhost:8112 | password `deluge` |
 | rqbit | `ikatson/rqbit` | 9.0.0-beta.1 | http://localhost:3030 | none |
 | aria2 | `docker/aria2` | 1.37.0 | http://localhost:6800 | secret `secret123` |
+| Porla | `ghcr.io/porla/porla` | 0.41.0 | http://localhost:1337 | auth disabled in compose (`PORLA_HTTP_AUTH_DISABLED_YES_REALLY`); use JWT in production |
 
 > qBittorrent 5.x temporary passwords change on container restart. Use `make test-integration` or `make qb-password`.
 

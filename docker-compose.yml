@@ -102,3 +102,17 @@ services:
       - ./data/aria2/config:/config
       - ./data/aria2/downloads:/downloads
     restart: unless-stopped
+
+  porla:
+    image: ghcr.io/porla/porla:0.41.0
+    container_name: torrent-porla
+    environment:
+      - PORLA_HTTP_HOST=0.0.0.0
+      - PORLA_HTTP_PORT=1337
+      - PORLA_HTTP_AUTH_DISABLED_YES_REALLY=true
+    ports:
+      - 1337:1337
+    volumes:
+      - ./data/porla/state:/var/lib/porla
+      - ./data/porla/downloads:/dl
+    restart: unless-stopped
