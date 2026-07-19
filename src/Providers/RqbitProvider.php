@@ -119,13 +119,33 @@ class RqbitProvider extends AbstractProvider
     #[Override]
     public function getServerStatus(): ServerStatus
     {
+        $version = null;
+
+        try {
+            $root = $this->request('GET', '/');
+
+            if (is_array($root) && isset($root['version'])) {
+                $version = is_string($root['version']) ? $root['version'] : null;
+            }
+        } catch (RequestException) {
+        }
+
         $response = $this->request('GET', 'stats');
 
         if (!is_array($response)) {
-            return new ServerStatus();
+            return new ServerStatus(version: $version);
         }
 
-        return ServerStatus::fromArray($response);
+        $status = ServerStatus::fromArray($response);
+
+        if ($status->version === null && $version !== null) {
+            return new ServerStatus(
+                version: $version,
+                apiVersion: $status->apiVersion,
+            );
+        }
+
+        return $status;
     }
 
     private function mapTorrent(array $data): array

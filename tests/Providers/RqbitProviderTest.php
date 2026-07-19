@@ -318,12 +318,15 @@ class RqbitProviderTest extends TestCase
         ];
 
         $provider = $this->createProvider([
+            new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                'version' => '9.0.0-beta.1',
+            ])),
             new Response(200, ['Content-Type' => 'application/json'], json_encode($statsResponse)),
         ]);
 
         $status = $provider->getServerStatus();
 
-        $this->assertNull($status->version);
+        $this->assertSame('9.0.0-beta.1', $status->version);
         $this->assertNull($status->apiVersion);
     }
 }

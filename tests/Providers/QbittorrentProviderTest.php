@@ -135,9 +135,25 @@ class QbittorrentProviderTest extends TestCase
     {
         $provider = $this->createProvider([
             new Response(200, ['Set-Cookie' => 'SID=abc123; path=/'], ''),
-            new Response(200, [], json_encode([
-                ['hash' => 'hash1', 'name' => 'test1.torrent'],
-                ['hash' => 'hash2', 'name' => 'test2.torrent'],
+            new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                [
+                    'hash' => 'hash1',
+                    'name' => 'test1.torrent',
+                    'state' => 'downloading',
+                    'total_size' => 2097152,
+                    'amount_left' => 1048576,
+                    'save_path' => '/downloads',
+                    'progress' => 0.5,
+                ],
+                [
+                    'hash' => 'hash2',
+                    'name' => 'test2.torrent',
+                    'state' => 'uploading',
+                    'total_size' => 1048576,
+                    'amount_left' => 0,
+                    'save_path' => '/downloads',
+                    'progress' => 1.0,
+                ],
             ])),
         ]);
 
@@ -149,19 +165,52 @@ class QbittorrentProviderTest extends TestCase
 
         $this->assertCount(2, $torrents);
         $this->assertSame('hash1', $torrents[0]->hash);
+        $this->assertSame('test1.torrent', $torrents[0]->name);
+        $this->assertSame(1, $torrents[0]->status);
+        $this->assertSame(2097152, $torrents[0]->totalSize);
+        $this->assertSame(1048576, $torrents[0]->leftUntilDone);
+        $this->assertSame('/downloads', $torrents[0]->downloadDir);
+        $this->assertSame(0.5, $torrents[0]->percentDone);
         $this->assertSame('hash2', $torrents[1]->hash);
+        $this->assertSame(2, $torrents[1]->status);
+        $this->assertSame(1.0, $torrents[1]->percentDone);
     }
 
     public function testGetTorrent(): void
     {
-        $provider = $this->createProvider([
+        $container = [];
+        $history = \GuzzleHttp\Middleware::history($container);
+        $mock = new MockHandler([
             new Response(200, ['Set-Cookie' => 'SID=abc123; path=/'], ''),
-            new Response(200, [], json_encode([
-                ['hash' => 'hash1', 'name' => 'test.torrent'],
+            new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                [
+                    'hash' => 'hash1',
+                    'name' => 'test.torrent',
+                    'state' => 'pausedDL',
+                    'total_size' => 1024,
+                    'amount_left' => 512,
+                    'save_path' => '/dl',
+                    'progress' => 0.5,
+                ],
             ])),
         ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
 
         $reflection = new \ReflectionClass(QbittorrentProvider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue($provider, new \GuzzleHttp\Client(['handler' => $handler]));
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, [
+            'timeout' => 10.0,
+            'verify_ssl' => true,
+            'username' => 'admin',
+            'password' => 'password',
+        ]);
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://localhost:8080');
+
         $initialize = $reflection->getMethod('initialize');
         $initialize->invoke($provider);
 
@@ -169,6 +218,12 @@ class QbittorrentProviderTest extends TestCase
 
         $this->assertSame('hash1', $torrent->hash);
         $this->assertSame('test.torrent', $torrent->name);
+        $this->assertSame(0, $torrent->status);
+        $this->assertSame(1024, $torrent->totalSize);
+        $this->assertSame(512, $torrent->leftUntilDone);
+        $this->assertSame('/dl', $torrent->downloadDir);
+        $this->assertSame(0.5, $torrent->percentDone);
+        $this->assertSame('hashes=hash1', $container[1]['request']->getUri()->getQuery());
     }
 
     public function testGetTorrentNotFound(): void
@@ -190,34 +245,72 @@ class QbittorrentProviderTest extends TestCase
 
     public function testPauseTorrent(): void
     {
-        $provider = $this->createProvider([
+        $container = [];
+        $history = \GuzzleHttp\Middleware::history($container);
+        $mock = new MockHandler([
             new Response(200, ['Set-Cookie' => 'SID=abc123; path=/'], ''),
-            new Response(200, [], '{"saveData": true}'),
+            new Response(200, [], 'Ok.'),
         ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
 
         $reflection = new \ReflectionClass(QbittorrentProvider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue($provider, new \GuzzleHttp\Client(['handler' => $handler]));
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, [
+            'timeout' => 10.0,
+            'verify_ssl' => true,
+            'username' => 'admin',
+            'password' => 'password',
+        ]);
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://localhost:8080');
+
         $initialize = $reflection->getMethod('initialize');
         $initialize->invoke($provider);
 
         $result = $provider->pauseTorrent('hash1');
 
         $this->assertTrue($result);
+        $this->assertStringContainsString('api/v2/torrents/stop', (string) $container[1]['request']->getUri());
+        $this->assertSame('hashes=hash1', (string) $container[1]['request']->getBody());
     }
 
     public function testResumeTorrent(): void
     {
-        $provider = $this->createProvider([
+        $container = [];
+        $history = \GuzzleHttp\Middleware::history($container);
+        $mock = new MockHandler([
             new Response(200, ['Set-Cookie' => 'SID=abc123; path=/'], ''),
-            new Response(200, [], '{"saveData": true}'),
+            new Response(200, [], 'Ok.'),
         ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
 
         $reflection = new \ReflectionClass(QbittorrentProvider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue($provider, new \GuzzleHttp\Client(['handler' => $handler]));
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, [
+            'timeout' => 10.0,
+            'verify_ssl' => true,
+            'username' => 'admin',
+            'password' => 'password',
+        ]);
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://localhost:8080');
+
         $initialize = $reflection->getMethod('initialize');
         $initialize->invoke($provider);
 
         $result = $provider->resumeTorrent('hash1');
 
         $this->assertTrue($result);
+        $this->assertStringContainsString('api/v2/torrents/start', (string) $container[1]['request']->getUri());
+        $this->assertSame('hashes=hash1', (string) $container[1]['request']->getBody());
     }
 
     public function testRemoveTorrent(): void

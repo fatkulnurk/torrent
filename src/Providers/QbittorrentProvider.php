@@ -106,6 +106,31 @@ class QbittorrentProvider extends AbstractProvider
         return $response;
     }
 
+    private function mapStatus(string $state): int
+    {
+        return match ($state) {
+            'pausedDL', 'pausedUP', 'stoppedDL', 'stoppedUP' => 0,
+            'downloading', 'metaDL', 'stalledDL', 'forcedDL', 'checkingDL' => 1,
+            'uploading', 'stalledUP', 'forcedUP', 'queuedUP' => 2,
+            'error', 'missingFiles' => 4,
+            default => 0,
+        };
+    }
+
+    private function mapTorrent(array $data): array
+    {
+        return [
+            'hash' => $data['hash'] ?? '',
+            'hashString' => $data['hash'] ?? '',
+            'name' => $data['name'] ?? '',
+            'status' => $this->mapStatus((string) ($data['state'] ?? '')),
+            'totalSize' => (int) ($data['total_size'] ?? 0),
+            'leftUntilDone' => (int) ($data['amount_left'] ?? 0),
+            'downloadDir' => $data['save_path'] ?? '',
+            'percentDone' => (float) ($data['progress'] ?? 0.0),
+        ];
+    }
+
     #[Override]
     public function addTorrent(string $source, array $options = []): bool
     {
@@ -134,8 +159,12 @@ class QbittorrentProvider extends AbstractProvider
             }
 
             $response = $this->request('POST', 'api/v2/torrents/add', [
-                'form_params' => [
-                    'torrent_files' => $decoded,
+                'multipart' => [
+                    [
+                        'name' => 'torrents',
+                        'contents' => $decoded,
+                        'filename' => 'torrent.torrent',
+                    ],
                 ],
             ]);
         }
@@ -154,14 +183,16 @@ class QbittorrentProvider extends AbstractProvider
             return [];
         }
 
-        return Torrent::collection($data);
+        return Torrent::collection(
+            array_map(fn(array $item): array => $this->mapTorrent($item), $data)
+        );
     }
 
     #[Override]
     public function getTorrent(string $hash): Torrent
     {
         $data = $this->request('GET', 'api/v2/torrents/info', [
-            'query' => ['hash' => $hash],
+            'query' => ['hashes' => $hash],
         ]);
 
         if (empty($data)) {
@@ -172,27 +203,27 @@ class QbittorrentProvider extends AbstractProvider
             throw new RequestException("Torrent with hash {$hash} not found");
         }
 
-        return Torrent::fromArray($data[0]);
+        return Torrent::fromArray($this->mapTorrent($data[0]));
     }
 
     #[Override]
     public function pauseTorrent(string $hash): bool
     {
-        $response = $this->request('POST', 'api/v2/torrents/pause', [
-            'form_params' => ['hashes' => [$hash]],
+        $response = $this->request('POST', 'api/v2/torrents/stop', [
+            'form_params' => ['hashes' => $hash],
         ]);
 
-        return $response['saveData'] ?? true;
+        return is_array($response) ? ($response['saveData'] ?? true) : true;
     }
 
     #[Override]
     public function resumeTorrent(string $hash): bool
     {
-        $response = $this->request('POST', 'api/v2/torrents/resume', [
-            'form_params' => ['hashes' => [$hash]],
+        $response = $this->request('POST', 'api/v2/torrents/start', [
+            'form_params' => ['hashes' => $hash],
         ]);
 
-        return $response['saveData'] ?? true;
+        return is_array($response) ? ($response['saveData'] ?? true) : true;
     }
 
     #[Override]
@@ -200,23 +231,25 @@ class QbittorrentProvider extends AbstractProvider
     {
         $response = $this->request('POST', 'api/v2/torrents/delete', [
             'form_params' => [
-                'hashes' => [$hash],
-                'deleteFiles' => $deleteFiles,
+                'hashes' => $hash,
+                'deleteFiles' => $deleteFiles ? 'true' : 'false',
             ],
         ]);
 
-        return $response['saveData'] ?? true;
+        return is_array($response) ? ($response['saveData'] ?? true) : true;
     }
 
     #[Override]
     public function setDownloadPath(string $hash, string $path): bool
     {
-        return $this->request('POST', 'api/v2/torrents/setLocation', [
+        $response = $this->request('POST', 'api/v2/torrents/setLocation', [
             'form_params' => [
-                'hashes' => [$hash],
+                'hashes' => $hash,
                 'location' => $path,
             ],
-        ])['saveData'] ?? true;
+        ]);
+
+        return is_array($response) ? ($response['saveData'] ?? true) : true;
     }
 
     #[Override]

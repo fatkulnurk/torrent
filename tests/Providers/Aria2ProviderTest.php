@@ -69,13 +69,32 @@ class Aria2ProviderTest extends TestCase
 
     public function testAddTorrentBase64(): void
     {
-        $provider = $this->createProvider([
+        $container = [];
+        $history = \GuzzleHttp\Middleware::history($container);
+        $mock = new MockHandler([
             new Response(200, ['Content-Type' => 'application/json'], $this->jsonRpcResult('gid3')),
         ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
 
-        $result = $provider->addTorrent(base64_encode('fake torrent data'));
+        $reflection = new \ReflectionClass(Aria2Provider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue($provider, new \GuzzleHttp\Client(['handler' => $handler]));
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, ['timeout' => 10.0, 'verify_ssl' => true]);
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://127.0.0.1:6800');
+
+        $encoded = base64_encode('fake torrent data');
+        $result = $provider->addTorrent($encoded, ['dir' => '/downloads']);
 
         $this->assertTrue($result);
+        $body = json_decode((string) $container[0]['request']->getBody(), true);
+        $this->assertSame('aria2.addTorrent', $body['method']);
+        $this->assertSame($encoded, $body['params'][0]);
+        $this->assertSame([], $body['params'][1]);
+        $this->assertSame(['dir' => '/downloads'], $body['params'][2]);
     }
 
     public function testAddTorrentInvalidBase64(): void
@@ -99,7 +118,7 @@ class Aria2ProviderTest extends TestCase
                 'completedLength' => '524288',
                 'uploadLength' => '0',
                 'dir' => '/downloads',
-                'bittorrent' => ['name' => 'active.torrent'],
+                'bittorrent' => ['info' => ['name' => 'active.torrent']],
                 'files' => [['path' => '/downloads/active.torrent', 'length' => '1048576']],
             ],
         ];
@@ -113,7 +132,7 @@ class Aria2ProviderTest extends TestCase
                 'completedLength' => '0',
                 'uploadLength' => '0',
                 'dir' => '/downloads',
-                'bittorrent' => ['name' => 'waiting.torrent'],
+                'bittorrent' => ['info' => ['name' => 'waiting.torrent']],
                 'files' => [['path' => '/downloads/waiting.torrent', 'length' => '2097152']],
             ],
         ];
@@ -127,7 +146,7 @@ class Aria2ProviderTest extends TestCase
                 'completedLength' => '4194304',
                 'uploadLength' => '1048576',
                 'dir' => '/downloads',
-                'bittorrent' => ['name' => 'done.torrent'],
+                'bittorrent' => ['info' => ['name' => 'done.torrent']],
                 'files' => [['path' => '/downloads/done.torrent', 'length' => '4194304']],
             ],
         ];
@@ -178,7 +197,7 @@ class Aria2ProviderTest extends TestCase
             'completedLength' => '524288',
             'uploadLength' => '0',
             'dir' => '/downloads',
-            'bittorrent' => ['name' => 'test.torrent'],
+            'bittorrent' => ['info' => ['name' => 'test.torrent']],
             'files' => [['path' => '/downloads/test.torrent', 'length' => '1048576']],
         ];
 

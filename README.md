@@ -42,7 +42,7 @@ composer require fatkulnurk/torrent
 
 ### qBittorrent
 
-qBittorrent always requires authentication.
+qBittorrent always requires authentication. This SDK targets the **qBittorrent 5.x** WebUI API (`/torrents/stop` and `/torrents/start` for pause/resume).
 
 ```php
 use Fatkulnurk\Torrent\TorrentClientManager;
@@ -149,9 +149,11 @@ $torrents = $client->getTorrents();
 | `getTorrent($hash)` | Get a single torrent's details |
 | `pauseTorrent($hash)` | Pause a torrent |
 | `resumeTorrent($hash)` | Resume a torrent |
-| `removeTorrent($hash, $deleteFiles?)` | Remove a torrent |
+| `removeTorrent($hash, $deleteFiles?)` | Remove a torrent (`$deleteFiles` is best-effort; rTorrent/aria2 may not delete data via RPC) |
 | `setDownloadPath($hash, $path)` | Change download directory |
 | `getServerStatus()` | Get server status / version |
+
+`Torrent::$status` is a loose, provider-normalized integer (paused/stopped ≈ 0, downloading ≈ 1, seeding/uploading ≈ 2, error ≈ 4). Exact ranges still differ slightly by driver; treat it as a coarse signal, not a global enum.
 
 ## Driver Status
 

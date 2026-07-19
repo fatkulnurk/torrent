@@ -19,12 +19,12 @@ readonly class Torrent
     public static function fromArray(array $data): self
     {
         return new self(
-            hash: $data['hash'] ?? $data['hashString'] ?? '',
-            name: $data['name'] ?? '',
-            status: $data['status'] ?? 0,
-            totalSize: $data['totalSize'] ?? 0,
-            leftUntilDone: $data['leftUntilDone'] ?? 0,
-            downloadDir: $data['downloadDir'] ?? '',
+            hash: (string) ($data['hash'] ?? $data['hashString'] ?? ''),
+            name: (string) ($data['name'] ?? ''),
+            status: (int) ($data['status'] ?? 0),
+            totalSize: (int) ($data['totalSize'] ?? 0),
+            leftUntilDone: (int) ($data['leftUntilDone'] ?? 0),
+            downloadDir: (string) ($data['downloadDir'] ?? ''),
             percentDone: (float) ($data['percentDone'] ?? 0.0),
         );
     }

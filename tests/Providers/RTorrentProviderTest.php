@@ -71,7 +71,7 @@ class RTorrentProviderTest extends TestCase
                                     <value><i8>1048576</i8></value>
                                     <value><i8>0</i8></value>
                                     <value><string>/downloads</string></value>
-                                    <value><double>1.0</double></value>
+                                    <value><i4>1</i4></value>
                                     <value><int>1</int></value>
                                     <value><int>1</int></value>
                                 </data>
@@ -86,7 +86,7 @@ class RTorrentProviderTest extends TestCase
                                     <value><i8>2097152</i8></value>
                                     <value><i8>1048576</i8></value>
                                     <value><string>/downloads</string></value>
-                                    <value><double>0.5</double></value>
+                                    <value><i4>0</i4></value>
                                     <value><int>0</int></value>
                                     <value><int>0</int></value>
                                 </data>
@@ -141,7 +141,7 @@ class RTorrentProviderTest extends TestCase
                                     <value><i8>1048576</i8></value>
                                     <value><i8>0</i8></value>
                                     <value><string>/downloads</string></value>
-                                    <value><double>1.0</double></value>
+                                    <value><i4>1</i4></value>
                                     <value><int>1</int></value>
                                     <value><int>1</int></value>
                                 </data>
@@ -210,13 +210,27 @@ class RTorrentProviderTest extends TestCase
 
     public function testSetDownloadPath(): void
     {
-        $provider = $this->createProvider([
+        $container = [];
+        $history = \GuzzleHttp\Middleware::history($container);
+        $mock = new MockHandler([
             new Response(200, ['Content-Type' => 'text/xml'], $this->xmlRpcResponse('')),
         ]);
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
+
+        $reflection = new \ReflectionClass(RTorrentProvider::class);
+        $provider = $reflection->newInstanceWithoutConstructor();
+        $clientProperty = $reflection->getProperty('client');
+        $clientProperty->setValue($provider, new \GuzzleHttp\Client(['handler' => $handler]));
+        $configProperty = $reflection->getProperty('config');
+        $configProperty->setValue($provider, ['timeout' => 10.0, 'verify_ssl' => true]);
+        $baseUrlProperty = $reflection->getProperty('baseUrl');
+        $baseUrlProperty->setValue($provider, 'http://localhost:8080');
 
         $result = $provider->setDownloadPath('hash1', '/new/path');
 
         $this->assertTrue($result);
+        $this->assertStringContainsString('d.directory.set', (string) $container[0]['request']->getBody());
     }
 
     public function testGetServerStatus(): void
